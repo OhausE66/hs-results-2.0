@@ -1,168 +1,72 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { generateChangeAnalysis, getAssessmentQuestions, generateSystemicQuestions } from '../services/geminiService';
-import { AnalysisResult, ChangeToolId, ChangeToolDefinition, AssessmentQuestion, AssessmentResponse } from '../types';
+import { AnalysisResult, ChangeToolId, ChangeToolDefinition, AssessmentQuestion, AssessmentResponse, OrgContext, ViewState, SavedProject, OrgContextData } from '../types';
 import { 
-  Loader2, AlertTriangle, Send, FileText, Brain, 
+  Loader2, AlertTriangle, FileText, Brain, 
   ListOrdered, ShieldAlert, Users, TrendingUp, Grid, Target, ArrowRight, ChevronLeft, CheckCircle, Building, Globe, Sparkles, MessageCircleQuestion,
-  Heart, MessageSquareText, Cpu, BarChart3, PlayCircle, BookOpen, Printer, Download, RefreshCw
+  Heart, MessageSquareText, Cpu, BarChart3, PlayCircle, BookOpen, Printer, RefreshCw, Save, FolderOpen, ArrowRightLeft, ShieldCheck, Zap, Download, Mail, X, Check, Search, ListChecks, Map, Activity, ClipboardList, CheckSquare
 } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
+import { Auth } from '../components/Auth';
+import { saveProjectSession, db, collection, query, orderBy, onSnapshot } from '../services/firebase';
+import { OrgContextForm } from '../components/OrgContextForm';
 
-const TOOLS: ChangeToolDefinition[] = [
-  { 
-    id: 'story_creation', 
-    name: "Change Story Generator", 
-    description: "Erstellung einer starken Narrative (Drache vs. Prinzessin vs. Hybrid).",
-    icon: BookOpen 
-  },
-  { 
-    id: 'plan_kotter', 
-    name: "Kotter's 8 Steps", 
-    description: "Klassischer Stufenplan für nachhaltige Veränderungsprozesse.",
-    icon: ListOrdered 
-  },
-  { 
-    id: 'analysis_swot', 
-    name: "SWOT Analyse", 
-    description: "Identifikation von Stärken, Schwächen, Chancen und Risiken.",
-    icon: Grid 
-  },
-  { 
-    id: 'analysis_stakeholder', 
-    name: "Stakeholder Matrix", 
-    description: "Analyse der Interessensgruppen und Kommunikationsstrategien.",
-    icon: Users 
-  },
-  { 
-    id: 'model_adkar', 
-    name: "ADKAR Modell", 
-    description: "Fokus auf individuelle Veränderung (Awareness, Desire, etc.).",
-    icon: Target 
-  },
-  { 
-    id: 'analysis_gap', 
-    name: "GAP Analyse", 
-    description: "Vergleich von Ist-Zustand und Zielbild mit Aktionsplan.",
-    icon: TrendingUp 
-  },
-  { 
-    id: 'risk_assessment', 
-    name: "Systemische Risiken", 
-    description: "Erkennung von Widerständen und kulturellen Barrieren.",
-    icon: ShieldAlert 
-  },
-  { 
-    id: 'tool_culture_amp', 
-    name: "Culture Amp Strategy", 
-    description: "Engagement & Retention Strategie für Change-Phasen.",
-    icon: Heart 
-  },
-  { 
-    id: 'tool_qualtrics', 
-    name: "Qualtrics EmployeeXM", 
-    description: "Employee Journey & Sentiment-Analyse an Touchpoints.",
-    icon: MessageSquareText 
-  },
-  { 
-    id: 'tool_viva', 
-    name: "Microsoft Viva Insights", 
-    description: "Datenbasierte Analyse von Kollaboration & Workload.",
-    icon: Cpu 
-  },
-];
+type Step = 'LANDING' | 'ORG_CONTEXT' | 'SETUP' | 'ASSESSMENT' | 'RESULT';
 
-// --- DEMO DATA START ---
-const DEMO_DATA = {
-  scenario: "Digitale Transformation: Einführung einer neuen cloud-basierten ERP-Plattform, die 20 Jahre alte Legacy-Systeme ablöst. Der Vertrieb weigert sich, die neuen CRM-Module zu nutzen, weil sie 'zu kompliziert' seien und der persönliche Kontakt verloren ginge.",
-  companyDesc: "Die TechMotive GmbH ist ein traditionsreicher deutscher Maschinenbauer mit stolzer Ingenieurskultur. Wir legen extremen Wert auf Präzision und Hierarchie. Fehler werden ungern zugegeben. 'Das haben wir schon immer so gemacht' ist ein häufiger Satz.",
-  companySize: "Großunternehmen (250+ MA)",
-  companyUrl: "https://demo.techmotive-gmbh.de",
-  cultureQuestions: [
-    { id: 'd1', text: "Wie wird in Ihrer Ingenieurskultur aktuell mit Unwissenheit oder Lernbedarf umgegangen?", placeholder: "..." },
-    { id: 'd2', text: "Welches ungeschriebene Gesetz über Hierarchien könnte die Einführung einer kollaborativen Cloud-Lösung blockieren?", placeholder: "..." },
-    { id: 'd3', text: "Wenn der Vertrieb 'Nein' sagt, wer hat dann wirklich das letzte Wort?", placeholder: "..." },
-    { id: 'd4', text: "Was müssten Sie tun, um sicherzustellen, dass die IT-Abteilung und der Vertrieb sich gegenseitig sabotieren?", placeholder: "..." }
-  ],
-  cultureAnswers: {
-    'd1': "Lernbedarf wird oft als Schwäche ausgelegt. Man muss Experte sein. Fragen stellen ist riskant.",
-    'd2': "Information ist Macht. Cloud bedeutet Transparenz, das bedroht die Wissensmonopole der Abteilungsleiter.",
-    'd3': "Der Vertriebsvorstand (Sales VP) ist der heimliche König. Wenn er blockt, passiert nichts.",
-    'd4': "Wir müssten der IT erlauben, das System ohne Einbeziehung des Vertriebs 'perfekt' zu konfigurieren und es dann am Montag einfach freizuschalten."
-  },
-  selectedTool: 'story_creation' as ChangeToolId,
-  toolAnswers: {
-    'st1': "Der Drache ist die Irrelevanz. Wenn wir nicht schneller werden, fressen uns die agilen Wettbewerber aus Asien auf, die halb so teuer und doppelt so schnell liefern.",
-    'st2': "Die Prinzessin ist die Freiheit. Keine Excel-Listen mehr pflegen, sondern Echtzeit-Daten haben und sich wieder auf echte Ingenieurskunst konzentrieren.",
-    'st3': "Fokus auf das mittlere Management, die aktuell Angst vor Kontrollverlust haben.",
-    'st4': "Eher 'Fight the Dragon'. Wir brauchen einen Weckruf."
-  }
-};
-// --- DEMO DATA END ---
+interface ChangeManagerProps {
+  user: any;
+  setView: (v: ViewState) => void;
+  orgContext: OrgContext | null;
+  clearOrgContext: () => void;
+}
 
-type Step = 'SETUP' | 'ASSESSMENT' | 'RESULT';
-
-export const ChangeManager: React.FC = () => {
-  const [step, setStep] = useState<Step>('SETUP');
+export const ChangeManager: React.FC<ChangeManagerProps> = ({ user, setView, orgContext, clearOrgContext }) => {
+  const { t, language } = useLanguage();
+  const [step, setStep] = useState<Step>('LANDING');
   
-  // Step 1 State
+  // Inputs
   const [scenario, setScenario] = useState('');
-  const [companySize, setCompanySize] = useState('Mittelstand (50-250 MA)');
   const [companyDesc, setCompanyDesc] = useState('');
-  const [companyUrl, setCompanyUrl] = useState('');
   const [selectedTool, setSelectedTool] = useState<ChangeToolId>('plan_kotter');
+  const [orgInfo, setOrgInfo] = useState<OrgContextData | null>(null);
   
-  // Dynamic Culture Questions State
   const [cultureQuestions, setCultureQuestions] = useState<AssessmentQuestion[]>([]);
   const [cultureAnswers, setCultureAnswers] = useState<Record<string, string>>({});
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
   const [questionsGenerated, setQuestionsGenerated] = useState(false);
 
-  // Step 2 State
   const [questions, setQuestions] = useState<AssessmentQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
-  // Step 3 State
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
-  const loadExampleProject = () => {
-    setScenario(DEMO_DATA.scenario);
-    setCompanyDesc(DEMO_DATA.companyDesc);
-    setCompanySize(DEMO_DATA.companySize);
-    setCompanyUrl(DEMO_DATA.companyUrl);
-    
-    // Set Culture Context
-    setCultureQuestions(DEMO_DATA.cultureQuestions);
-    setCultureAnswers(DEMO_DATA.cultureAnswers);
-    setQuestionsGenerated(true);
+  const TOOLS: ChangeToolDefinition[] = [
+    { id: 'plan_kotter', name: t('tool.kotter'), description: t('tool.kotter.desc'), icon: ListOrdered },
+    { id: 'story_creation', name: t('tool.story'), description: t('tool.story.desc'), icon: BookOpen },
+    { id: 'analysis_swot', name: t('tool.swot'), description: t('tool.swot.desc'), icon: Grid },
+    { id: 'model_adkar', name: t('tool.adkar'), description: t('tool.adkar.desc'), icon: Target },
+    { id: 'analysis_stakeholder', name: t('tool.stakeholder'), description: t('tool.stakeholder.desc'), icon: Users },
+    { id: 'analysis_gap', name: t('tool.gap'), description: t('tool.gap.desc'), icon: ArrowRightLeft },
+    { id: 'risk_assessment', name: t('tool.risk'), description: t('tool.risk.desc'), icon: ShieldAlert },
+  ];
 
-    // Set Tool Context
-    setSelectedTool(DEMO_DATA.selectedTool);
-    const qs = getAssessmentQuestions(DEMO_DATA.selectedTool);
-    setQuestions(qs);
-    // Ensure IDs match for demo data mapping (simple mapping for demo purposes)
-    const demoToolAnswers: Record<string, string> = {};
-    qs.forEach((q, index) => {
-       // Map demo answers sequentially to the tool questions
-       const keys = Object.keys(DEMO_DATA.toolAnswers);
-       if (keys[index]) {
-          // @ts-ignore
-          demoToolAnswers[q.id] = DEMO_DATA.toolAnswers[keys[index]] || "Demo Antwort";
-       }
-    });
-    setAnswers(demoToolAnswers);
-  };
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step]);
 
   const handleGenerateCultureQuestions = async () => {
-    if (!scenario.trim() || !companyDesc.trim()) return;
+    if (!scenario.trim()) return;
     setGeneratingQuestions(true);
     try {
-      const qs = await generateSystemicQuestions(scenario, companyDesc);
+      const fullPrompt = `${scenario} (Profile: ${JSON.stringify(orgInfo)})`;
+      const qs = await generateSystemicQuestions(fullPrompt, companyDesc || "Organisation", language);
       setCultureQuestions(qs);
       setQuestionsGenerated(true);
     } catch (e) {
-      console.error("Failed to generate questions");
+      console.error(e);
     } finally {
       setGeneratingQuestions(false);
     }
@@ -170,681 +74,342 @@ export const ChangeManager: React.FC = () => {
 
   const handleStartAssessment = () => {
     if (!scenario.trim()) return;
-    const qs = getAssessmentQuestions(selectedTool);
+    const qs = getAssessmentQuestions(selectedTool, language);
     setQuestions(qs);
-    // Initialize answers if empty (or keep demo answers if present)
-    setAnswers(prev => {
-      const initAnswers: Record<string, string> = {};
-      qs.forEach(q => {
-        if (!prev[q.id]) initAnswers[q.id] = '';
-        else initAnswers[q.id] = prev[q.id];
-      });
-      return initAnswers;
-    });
     setStep('ASSESSMENT');
   };
 
-  const handleAnswerChange = (id: string, value: string) => {
-    setAnswers(prev => ({ ...prev, [id]: value }));
-  };
-  
-  const handleCultureAnswerChange = (id: string, value: string) => {
-    setCultureAnswers(prev => ({ ...prev, [id]: value }));
-  };
-
-  const handleGenerate = async () => {
+  const handleGenerateAnalysis = async () => {
     setLoading(true);
-    setError('');
-    setResult(null);
     setStep('RESULT');
-
-    // Format answers for API
-    const formattedToolAnswers: AssessmentResponse[] = questions.map(q => ({
-      questionId: q.id,
-      questionText: q.text,
-      answer: answers[q.id] || "Keine Angabe"
-    }));
-
-    const formattedCultureAnswers: AssessmentResponse[] = cultureQuestions.map(q => ({
-      questionId: q.id,
-      questionText: q.text,
-      answer: cultureAnswers[q.id] || "Keine Angabe"
-    }));
-
     try {
-      const data = await generateChangeAnalysis(
-        selectedTool, 
-        scenario, 
-        companySize, 
-        companyDesc, 
-        companyUrl, 
-        formattedToolAnswers,
-        formattedCultureAnswers
+      const toolAnswers: AssessmentResponse[] = questions.map(q => ({
+        questionId: q.id, questionText: q.text, answer: answers[q.id] || "No input"
+      }));
+      const cultAnswers: AssessmentResponse[] = cultureQuestions.map(q => ({
+        questionId: q.id, questionText: q.text, answer: cultureAnswers[q.id] || "No input"
+      }));
+
+      const res = await generateChangeAnalysis(
+        selectedTool, scenario, "N/A", companyDesc, "N/A", toolAnswers, cultAnswers, language
       );
-      setResult(data);
-    } catch (err) {
-      setError('Entschuldigung, die AI konnte die Analyse gerade nicht erstellen. Bitte versuchen Sie es erneut.');
-      setStep('ASSESSMENT'); // Go back on error
+      setResult(res);
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResetFull = () => {
-    setStep('SETUP');
-    setResult(null);
-    setScenario('');
-    setCompanyDesc('');
-    setCompanyUrl('');
-    setAnswers({});
-    setCultureAnswers({});
-    setCultureQuestions([]);
-    setQuestionsGenerated(false);
-  };
-
-  const handleNewAnalysisKeepContext = () => {
-    setStep('ASSESSMENT'); // Go back to tool selection
-    setResult(null);
-    // We keep scenario, companyDesc, cultureAnswers, but maybe clear tool answers?
-    // Let's keep tool answers in state but they will be overwritten if tool changes
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  // Renderers for different Data Types (Same as before)
-  const renderContent = () => {
-    if (!result) return null;
-
-    switch (result.toolId) {
-      case 'plan_kotter':
-        return (
-          <div className="space-y-4">
-            {result.data.map((step: any) => (
-              <div key={step.step} className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
-                <div className="flex items-center mb-3">
-                  <span className="bg-hs-blue text-white w-8 h-8 rounded-full flex items-center justify-center font-bold mr-3 text-sm">
-                    {step.step}
-                  </span>
-                  <h4 className="text-lg font-bold text-slate-800">{step.name}</h4>
-                </div>
-                <p className="text-slate-600 mb-3 italic">"{step.action}"</p>
-                <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-500 border-l-2 border-hs-accent">
-                  <span className="font-semibold text-hs-blue">Warum:</span> {step.rationale}
-                </div>
-              </div>
-            ))}
-          </div>
-        );
-
-      case 'story_creation':
-        return (
-           <div className="space-y-6">
-              <p className="text-sm text-slate-500 mb-4 bg-blue-50 p-3 rounded border border-blue-100">
-                <Brain size={16} className="inline mr-2"/>
-                Die AI hat drei narrative Strategien für Sie entwickelt. Wählen Sie die Geschichte, die am besten zur aktuellen Kultur und Dringlichkeit passt.
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                 {result.data.map((story: any, i: number) => {
-                   let borderColor = 'border-slate-200';
-                   let bgColor = 'bg-white';
-                   let icon = <Brain size={24} />;
-                   
-                   if (story.style === 'Fight the Dragon') {
-                     borderColor = 'border-red-200';
-                     bgColor = 'bg-red-50/30';
-                     icon = <ShieldAlert size={24} className="text-red-500" />;
-                   } else if (story.style === 'Win the Princess') {
-                     borderColor = 'border-emerald-200';
-                     bgColor = 'bg-emerald-50/30';
-                     icon = <Sparkles size={24} className="text-emerald-500" />;
-                   } else {
-                     borderColor = 'border-indigo-200';
-                     bgColor = 'bg-indigo-50/30';
-                     icon = <RefreshCw size={24} className="text-indigo-500" />;
-                   }
-
-                   return (
-                     <div key={i} className={`p-6 rounded-xl border-2 ${borderColor} ${bgColor} flex flex-col`}>
-                        <div className="flex items-center mb-4">
-                           {icon}
-                           <h4 className="font-bold text-slate-800 ml-2">{story.style}</h4>
-                        </div>
-                        <h5 className="font-bold text-lg text-hs-blue mb-3 leading-tight">"{story.headline}"</h5>
-                        <p className="text-sm text-slate-600 italic mb-6 flex-grow">{story.narrative}</p>
-                        
-                        <div className="space-y-3 mt-auto">
-                           <div className="bg-white p-3 rounded border border-slate-100">
-                             <span className="text-xs font-bold text-slate-400 uppercase block">Kernbotschaft</span>
-                             <p className="text-sm font-medium text-slate-800">{story.keyMessage}</p>
-                           </div>
-                           <div className="bg-white p-3 rounded border border-slate-100">
-                             <span className="text-xs font-bold text-slate-400 uppercase block">Call to Action</span>
-                             <p className="text-sm font-medium text-hs-accent">{story.callToAction}</p>
-                           </div>
-                        </div>
-                     </div>
-                   );
-                 })}
-              </div>
-           </div>
-        );
-
-      case 'analysis_swot':
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-emerald-50 p-6 rounded-xl border border-emerald-100">
-              <h4 className="text-emerald-800 font-bold mb-4 flex items-center"><TrendingUp className="mr-2" size={18}/> Strengths</h4>
-              <ul className="space-y-2">
-                {result.data.strengths.map((item: string, i: number) => (
-                  <li key={i} className="flex items-start text-sm text-emerald-900"><span className="mr-2">•</span>{item}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="bg-red-50 p-6 rounded-xl border border-red-100">
-              <h4 className="text-red-800 font-bold mb-4 flex items-center"><AlertTriangle className="mr-2" size={18}/> Weaknesses</h4>
-               <ul className="space-y-2">
-                {result.data.weaknesses.map((item: string, i: number) => (
-                  <li key={i} className="flex items-start text-sm text-red-900"><span className="mr-2">•</span>{item}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="bg-blue-50 p-6 rounded-xl border border-blue-100">
-              <h4 className="text-blue-800 font-bold mb-4 flex items-center"><Target className="mr-2" size={18}/> Opportunities</h4>
-               <ul className="space-y-2">
-                {result.data.opportunities.map((item: string, i: number) => (
-                  <li key={i} className="flex items-start text-sm text-blue-900"><span className="mr-2">•</span>{item}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="bg-amber-50 p-6 rounded-xl border border-amber-100">
-              <h4 className="text-amber-800 font-bold mb-4 flex items-center"><ShieldAlert className="mr-2" size={18}/> Threats</h4>
-               <ul className="space-y-2">
-                {result.data.threats.map((item: string, i: number) => (
-                  <li key={i} className="flex items-start text-sm text-amber-900"><span className="mr-2">•</span>{item}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        );
-
-      case 'analysis_stakeholder':
-        return (
-          <div className="space-y-4">
-             {result.data.map((sh: any, i: number) => (
-               <div key={i} className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between">
-                 <div className="mb-4 md:mb-0 md:w-1/3">
-                   <h4 className="font-bold text-lg text-hs-blue">{sh.group}</h4>
-                   <div className="flex space-x-2 mt-2">
-                     <span className="text-xs px-2 py-1 bg-slate-100 rounded text-slate-600">Power: {sh.power}</span>
-                     <span className="text-xs px-2 py-1 bg-slate-100 rounded text-slate-600">Interest: {sh.interest}</span>
-                   </div>
-                 </div>
-                 <div className="md:w-2/3 md:pl-6 border-l border-slate-100">
-                    <p className="text-sm font-semibold text-hs-accent mb-1">{sh.strategy}</p>
-                    <p className="text-sm text-slate-600">{sh.tactics}</p>
-                 </div>
-               </div>
-             ))}
-          </div>
-        );
-
-      case 'analysis_gap':
-      case 'risk_assessment':
-        return (
-           <div className="space-y-4">
-            {result.data.map((item: any, i: number) => (
-              <div key={i} className="bg-white p-5 rounded-lg border-l-4 border-hs-blue shadow-sm">
-                 <h4 className="font-bold text-slate-800 mb-2">{item.area || item.riskArea}</h4>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div className="bg-red-50 p-3 rounded">
-                      <span className="block font-bold text-red-700 text-xs uppercase mb-1">{item.current ? 'Ist-Zustand' : 'Auswirkung'}</span>
-                      {item.current || item.impact}
-                    </div>
-                    <div className="bg-emerald-50 p-3 rounded">
-                      <span className="block font-bold text-emerald-700 text-xs uppercase mb-1">{item.target ? 'Ziel-Zustand' : 'Mitigation'}</span>
-                      {item.target || item.mitigation}
-                    </div>
-                 </div>
-                 <div className="mt-3 text-sm text-slate-500">
-                   <span className="font-semibold text-hs-blue">Aktion: </span>
-                   {item.action || item.probability}
-                 </div>
-              </div>
-            ))}
-           </div>
-        );
-      
-      case 'model_adkar':
-        return (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center text-xs font-semibold text-slate-400 uppercase tracking-widest px-2">
-              <span>Start</span>
-              <span>Transformation</span>
-              <span>Ziel</span>
-            </div>
-            <div className="relative pt-4 pb-4">
-              <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-200 -z-10 transform -translate-y-1/2"></div>
-              <div className="grid grid-cols-5 gap-2">
-                 {result.data.map((stage: any, i: number) => (
-                   <div key={i} className="flex flex-col items-center text-center group">
-                      <div className="w-10 h-10 rounded-full bg-hs-blue text-white flex items-center justify-center font-bold text-sm mb-3 ring-4 ring-white shadow-lg z-10">
-                        {stage.stage[0]}
-                      </div>
-                      <div className="bg-white p-3 rounded shadow border border-slate-100 text-xs w-full min-h-[100px] flex flex-col">
-                        <span className="font-bold text-hs-blue mb-1">{stage.stage}</span>
-                        <p className="text-slate-500 mb-2">{stage.status}</p>
-                        <p className="text-hs-accent mt-auto font-medium">{stage.tactic}</p>
-                      </div>
-                   </div>
-                 ))}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'tool_culture_amp':
-      case 'tool_qualtrics':
-      case 'tool_viva':
-        const isViva = result.toolId === 'tool_viva';
-        const isQualtrics = result.toolId === 'tool_qualtrics';
-        const accentColor = isViva ? 'border-purple-200' : isQualtrics ? 'border-sky-200' : 'border-rose-200';
-        const bgAccent = isViva ? 'bg-purple-50' : isQualtrics ? 'bg-sky-50' : 'bg-rose-50';
-        const textColor = isViva ? 'text-purple-800' : isQualtrics ? 'text-sky-800' : 'text-rose-800';
-
-        return (
-          <div className="space-y-6">
-             <div className={`${bgAccent} p-4 rounded-lg border ${accentColor} mb-4`}>
-                <p className={`text-sm ${textColor} font-medium`}>
-                   <Sparkles size={16} className="inline mr-2" />
-                   Einsatzstrategie & Analytics Plan
-                </p>
-             </div>
-             <div className="grid grid-cols-1 gap-4">
-                {result.data.map((item: any, i: number) => (
-                   <div key={i} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-                      <div className="flex justify-between items-start mb-4">
-                        <h4 className="font-bold text-lg text-hs-blue">{item.focusArea}</h4>
-                        <div className="bg-slate-100 px-3 py-1 rounded-full text-xs font-bold text-slate-600 flex items-center">
-                           <BarChart3 size={12} className="mr-2"/> Metric: {item.metric}
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow">
-                         <div className="bg-slate-50 p-4 rounded-lg">
-                            <span className="text-xs font-bold text-slate-400 uppercase block mb-2">AI Insight Prediction</span>
-                            <p className="text-sm text-slate-700 italic">"{item.insight}"</p>
-                         </div>
-                         <div className={`${bgAccent} bg-opacity-30 p-4 rounded-lg`}>
-                            <span className="text-xs font-bold text-slate-400 uppercase block mb-2">Empfohlene Intervention</span>
-                            <p className={`text-sm ${textColor} font-medium`}>{item.intervention}</p>
-                         </div>
-                      </div>
-                   </div>
-                ))}
-             </div>
-          </div>
-        );
-
-      default:
-        return <p>Datenformat nicht unterstützt.</p>;
+  const handleSaveSession = async () => {
+    if (!user || !result) return;
+    setSaveStatus('saving');
+    try {
+      await saveProjectSession(user.uid, {
+        title: `Change-Analyse: ${selectedTool.replace('_', ' ')}`,
+        toolId: 'change_manager',
+        inputs: { scenario, selectedTool, orgInfo, answers, cultureAnswers },
+        results: result,
+        updatedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      });
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch (e) {
+      console.error(e);
+      setSaveStatus('idle');
     }
   };
 
-  return (
-    <div className="pt-24 pb-12 min-h-screen bg-slate-50">
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          .print-full-width { width: 100% !important; max-width: none !important; margin: 0 !important; padding: 0 !important; }
-          body { background: white; -webkit-print-color-adjust: exact; }
-          @page { margin: 2cm; }
-        }
-      `}</style>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 print-full-width">
-        
-        <div className="mb-10 text-center no-print">
-          <h1 className="text-4xl font-bold text-hs-blue mb-4">AI Change Consultant</h1>
-          <p className="text-slate-600 max-w-2xl mx-auto">
-            Ihr systemischer Begleiter für Transformationsprozesse.
-          </p>
-        </div>
-
-        {/* Wizard Progress (Hidden on Print) */}
-        <div className="flex justify-center mb-8 no-print">
-          <div className="flex items-center space-x-4">
-            <div className={`flex items-center space-x-2 ${step === 'SETUP' ? 'text-hs-accent' : 'text-slate-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${step === 'SETUP' ? 'border-hs-accent bg-hs-accent/10' : (step === 'ASSESSMENT' || step === 'RESULT') ? 'bg-green-500 border-green-500 text-white' : 'border-slate-300'}`}>
-                {(step === 'ASSESSMENT' || step === 'RESULT') ? <CheckCircle size={16}/> : '1'}
-              </div>
-              <span className="font-semibold text-sm">Kontext</span>
-            </div>
-            <div className="w-12 h-0.5 bg-slate-200"></div>
-            <div className={`flex items-center space-x-2 ${step === 'ASSESSMENT' ? 'text-hs-accent' : 'text-slate-400'}`}>
-               <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${step === 'ASSESSMENT' ? 'border-hs-accent bg-hs-accent/10' : step === 'RESULT' ? 'bg-green-500 border-green-500 text-white' : 'border-slate-300'}`}>
-                {step === 'RESULT' ? <CheckCircle size={16}/> : '2'}
-              </div>
-              <span className="font-semibold text-sm">Tool & Details</span>
-            </div>
-            <div className="w-12 h-0.5 bg-slate-200"></div>
-            <div className={`flex items-center space-x-2 ${step === 'RESULT' ? 'text-hs-accent' : 'text-slate-400'}`}>
-               <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${step === 'RESULT' ? 'border-hs-accent bg-hs-accent/10' : 'border-slate-300'}`}>
-                3
-              </div>
-              <span className="font-semibold text-sm">Lösung</span>
-            </div>
-          </div>
-        </div>
-
-        {/* View Switching */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* STEP 1: SETUP */}
-          {step === 'SETUP' && (
-            <div className="lg:col-span-12 max-w-5xl mx-auto w-full">
-              
-               {/* DEMO BUTTON */}
-               <div className="flex justify-end mb-4">
-                  <button 
-                    onClick={loadExampleProject}
-                    className="flex items-center text-sm font-semibold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-200 hover:bg-emerald-100 transition-colors shadow-sm"
-                  >
-                    <PlayCircle size={16} className="mr-2" /> Beispiel-Szenario laden
-                  </button>
+  const renderAssessment = () => (
+    <div className="max-w-4xl mx-auto py-12 animate-fade-in space-y-10">
+       <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100">
+          <h2 className="text-3xl font-black text-hs-blue uppercase mb-8 flex items-center"><ListChecks className="mr-3 text-hs-orange" /> {t('cm.audit.title')}</h2>
+          <div className="space-y-8 mb-10">
+             {questions.map((q, i) => (
+               <div key={q.id} className="animate-fade-in" style={{ animationDelay: `${i * 100}ms` }}>
+                  <label className="block text-sm font-bold text-hs-blue mb-3">{q.text}</label>
+                  <textarea value={answers[q.id] || ''} onChange={e => setAnswers({...answers, [q.id]: e.target.value})} className="w-full p-6 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-blue transition-all" placeholder={q.placeholder} />
                </div>
+             ))}
+          </div>
+          <button onClick={handleGenerateAnalysis} className="w-full bg-hs-blue text-white py-6 rounded-3xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-xl flex items-center justify-center">
+             <Zap className="mr-3" /> {t('cm.btn.generate')}
+          </button>
+       </div>
+    </div>
+  );
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  const renderResult = () => {
+    if (loading) return (
+      <div className="max-w-4xl mx-auto py-32 text-center">
+        <Loader2 size={64} className="animate-spin mx-auto text-hs-blue mb-4" />
+        <h2 className="text-3xl font-black text-hs-blue uppercase animate-pulse">{language === 'de' ? 'Bericht wird geschmiedet...' : 'Forging report...'}</h2>
+      </div>
+    );
+    if (!result) return null;
+
+    const data = result.data || {};
+    const phases = data.phases || [];
+    const risks = data.risks || [];
+    const actionPlan = data.action_plan || [];
+    const systemicDiagnosis = data.systemic_diagnosis || "";
+    const culturalLevers = data.cultural_levers || [];
+
+    return (
+      <div className="max-w-6xl mx-auto py-12 space-y-12 animate-fade-in px-4">
+         {/* Header */}
+         <div className="bg-hs-blue text-white p-12 rounded-[4rem] shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-12 opacity-10"><Map size={240} /></div>
+            <div className="relative z-10">
+               <div className="flex justify-between items-start mb-10">
+                  <div className="flex space-x-3 no-print">
+                     <button onClick={handleSaveSession} disabled={saveStatus !== 'idle'} className={`px-5 py-2 rounded-full text-xs font-black uppercase transition-all ${saveStatus === 'saved' ? 'bg-emerald-50 text-white' : 'bg-white/10 hover:bg-white/20'}`}>
+                        {saveStatus === 'saving' ? <Loader2 size={12} className="animate-spin" /> : saveStatus === 'saved' ? <Check size={12} /> : <Save size={12} />}
+                        <span className="ml-2">{saveStatus === 'saved' ? 'Gesichert' : 'Speichern'}</span>
+                     </button>
+                     <button onClick={() => window.print()} className="bg-white/10 hover:bg-white/20 p-2 rounded-full"><Printer size={18}/></button>
+                  </div>
+                  <div className="bg-hs-orange px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center">
+                    <Sparkles size={12} className="mr-2" /> Senior Expert Analysis
+                  </div>
+               </div>
+               <h1 className="text-[10px] font-black uppercase tracking-[0.5em] text-hs-accent mb-4">Strategiebericht: {selectedTool.toUpperCase()}</h1>
+               <h2 className="text-5xl font-black uppercase tracking-tight mb-8 leading-none">{result.summary}</h2>
+               <div className="h-1 w-24 bg-hs-orange rounded-full mb-8"></div>
+               <p className="text-xl text-slate-300 font-medium italic max-w-4xl">"{data.strategic_logic || "Systemische Neuausrichtung zur Sicherung der Zukunftsfähigkeit."}"</p>
+            </div>
+         </div>
+
+         {/* Systemic Diagnosis */}
+         <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 flex flex-col">
+            <h3 className="text-2xl font-black text-hs-blue uppercase mb-8 flex items-center"><Brain className="mr-3 text-hs-orange" /> Systemische Diagnose</h3>
+            <div className="prose prose-slate max-w-none">
+               <p className="text-lg text-slate-600 leading-relaxed font-medium">
+                  {systemicDiagnosis || "Analysierte Muster deuten auf eine strukturelle Trägheit hin, die durch gezielte Interventionen aufgebrochen werden muss."}
+               </p>
+            </div>
+         </div>
+
+         {/* Visual Graphic: The Impact Matrix */}
+         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-8 bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 flex flex-col">
+               <h3 className="text-2xl font-black text-hs-blue uppercase mb-8 flex items-center"><Activity className="mr-3 text-hs-orange" /> Impact Priority Map</h3>
+               <div className="flex-grow min-h-[300px] relative border-l-2 border-b-2 border-slate-100 mt-4 mb-8 mx-8">
+                  <div className="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-black text-slate-300 uppercase tracking-widest">High Impact</div>
+                  <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-[10px] font-black text-slate-300 uppercase tracking-widest">Urgency</div>
+                  
+                  <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
+                    <div className="border-r border-slate-50 border-dashed"></div>
+                    <div className="border-slate-50 border-dashed"></div>
+                  </div>
+
+                  {Array.isArray(phases) && phases.slice(0, 5).map((p: any, i: number) => (
+                    <div key={i} className="absolute p-4 rounded-3xl bg-hs-blue text-white shadow-xl flex items-center animate-fade-in group cursor-default hover:bg-hs-orange transition-all" 
+                      style={{ 
+                        left: `${20 + (i * 15)}%`, 
+                        top: `${70 - (i * 12)}%`,
+                        transform: `scale(${1 + (i * 0.05)})`
+                      }}>
+                        <span className="font-black text-[10px] mr-2 opacity-50">{i + 1}</span>
+                        <span className="text-[10px] font-bold uppercase truncate max-w-[80px]">{typeof p === 'string' ? p.substring(0,15) : p.title?.substring(0,15)}</span>
+                    </div>
+                  ))}
+               </div>
+            </div>
+
+            <div className="lg:col-span-4 space-y-8">
+               <div className="bg-hs-blue text-white p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden h-full">
+                  <h3 className="text-lg font-black uppercase mb-6 flex items-center"><Target className="mr-3 text-hs-accent" /> Kulturelle Hebel</h3>
+                  <ul className="space-y-4">
+                    {culturalLevers.map((lever: string, i: number) => (
+                      <li key={i} className="flex items-start text-xs font-bold text-hs-accent bg-white/5 p-3 rounded-xl border border-white/10">
+                        <CheckCircle size={14} className="mr-2 mt-0.5 shrink-0" /> {lever}
+                      </li>
+                    ))}
+                  </ul>
+               </div>
+            </div>
+         </div>
+
+         {/* Detailed Roadmap */}
+         <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+            <h3 className="text-xl font-black text-hs-blue uppercase mb-8 flex items-center"><TrendingUp className="mr-3 text-hs-accent" /> Transformation Roadmap</h3>
+            <div className="space-y-6">
+               {Array.isArray(phases) && phases.map((phase: any, i: number) => (
+                 <div key={i} className="flex items-start group">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-hs-blue font-black text-sm mr-6 group-hover:bg-hs-blue group-hover:text-white transition-all shrink-0">
+                       {i + 1}
+                    </div>
+                    <div className="border-b border-slate-50 pb-4 flex-grow">
+                       <h4 className="font-bold text-hs-blue mb-1">{typeof phase === 'string' ? phase : (phase.title || phase.name || `Phase ${i+1}`)}</h4>
+                       {phase.description && <p className="text-xs text-slate-500 leading-relaxed">{phase.description}</p>}
+                    </div>
+                 </div>
+               ))}
+            </div>
+         </div>
+
+         {/* ACTION PLAN / TODO LIST */}
+         <div className="bg-slate-50 p-12 rounded-[4rem] border-t-8 border-hs-orange shadow-2xl">
+            <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
+               <div className="flex items-center space-x-4">
+                  <div className="bg-hs-orange text-white p-4 rounded-3xl shadow-lg">
+                     <ClipboardList size={32} />
+                  </div>
+                  <div>
+                    <h3 className="text-3xl font-black text-hs-blue uppercase leading-none">Operative To-Do Liste</h3>
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-2">Schritte zur unmittelbaren Umsetzung</p>
+                  </div>
+               </div>
+               <div className="bg-white px-6 py-2 rounded-full border border-slate-200 text-[10px] font-black uppercase text-hs-blue tracking-widest">
+                  {actionPlan.length} Maßnahmen identifiziert
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+               {Array.isArray(actionPlan) && actionPlan.map((todo: any, i: number) => (
+                 <div key={i} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center space-x-6 group hover:border-hs-orange transition-all">
+                    <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${todo.priority === 'High' ? 'border-red-500 text-red-500' : 'border-slate-200 text-slate-200'} group-hover:border-hs-orange group-hover:text-hs-orange transition-colors`}>
+                       <CheckSquare size={14} />
+                    </div>
+                    <div className="flex-grow">
+                       <div className="flex items-center space-x-3 mb-1">
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${todo.priority === 'High' ? 'bg-red-50 text-red-600' : 'bg-slate-50 text-slate-500'}`}>Prio: {todo.priority}</span>
+                          <span className="text-[9px] font-black uppercase text-hs-accent">Target: {todo.target}</span>
+                       </div>
+                       <p className="font-bold text-hs-blue">{todo.task}</p>
+                    </div>
+                    <div className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity">
+                       <button className="bg-hs-blue/5 text-hs-blue p-2 rounded-xl hover:bg-hs-blue hover:text-white transition-all"><ArrowRight size={16}/></button>
+                    </div>
+                 </div>
+               ))}
+            </div>
+         </div>
+
+         {/* Risk Register */}
+         <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border-l-8 border-hs-orange h-fit">
+            <h3 className="text-xl font-black text-hs-orange uppercase mb-8 flex items-center"><ShieldAlert className="mr-3" /> Risk & Mitigation Log</h3>
+            <div className="space-y-4">
+               {Array.isArray(risks) && risks.map((risk: any, i: number) => (
+                 <div key={i} className="p-4 bg-orange-50/50 rounded-2xl border border-orange-100 group hover:border-hs-orange transition-all">
+                    <p className="text-xs font-bold text-hs-blue">{typeof risk === 'string' ? risk : (risk.risk || risk.title)}</p>
+                    {risk.mitigation && <p className="text-[10px] text-slate-500 mt-2 italic font-medium">Strategie: {risk.mitigation}</p>}
+                 </div>
+               ))}
+            </div>
+         </div>
+
+         {/* Support Footer */}
+         <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 text-center relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform duration-700 pointer-events-none">
+               <Mail size={120} />
+            </div>
+            <p className="text-lg font-bold text-hs-blue leading-relaxed relative z-10 max-w-2xl mx-auto">
+               Gerne unterstützen wir Sie bei der Umsetzung dieser To-Do Liste - Wenden Sie sich an <span className="text-hs-orange">Andre Stuer</span> und <span className="text-hs-orange">Olaf Heger</span> unter <a href="mailto:kontakt@hs-results.com" className="text-hs-accent hover:text-hs-orange transition-colors underline decoration-2 underline-offset-4">kontakt@hs-results.com</a>
+            </p>
+         </div>
+      </div>
+    );
+  };
+
+  const renderLanding = () => (
+    <div className="max-w-6xl mx-auto py-12 animate-fade-in px-4">
+       <div className="flex flex-col lg:flex-row items-start gap-16 mb-24">
+          <div className="lg:w-1/2 space-y-8">
+             <div className="flex items-center space-x-4 mb-2">
+                <div className="h-[3px] w-16 bg-hs-orange"></div>
+                <p className="text-hs-orange font-black uppercase tracking-[0.3em] text-sm">{t('cm.subtitle')}</p>
+             </div>
+             <h1 className="text-6xl font-black text-hs-blue uppercase tracking-tight leading-[0.95]">{t('cm.title')}</h1>
+             <div className="space-y-6 text-slate-600 leading-relaxed text-lg">
+                <p className="font-bold text-hs-blue text-xl">{t('cm.landing.main')}</p>
+                <p>{t('cm.landing.text1')}</p>
+                <div className="bg-hs-blue/5 p-8 rounded-[2.5rem] border-l-8 border-hs-orange shadow-sm">
+                   <h4 className="font-black text-hs-blue uppercase text-xs tracking-widest mb-6">{t('cm.landing.list_title')}</h4>
+                   <ul className="space-y-4">
+                      {[1,2,3,4].map(i => (
+                        <li key={i} className="flex items-start">
+                           <CheckCircle className="text-hs-orange mr-3 mt-1 flex-shrink-0" size={18} />
+                           <span className="text-sm font-bold text-hs-blue">{t(`cm.landing.item${i}`)}</span>
+                        </li>
+                      ))}
+                   </ul>
+                </div>
+             </div>
+             <div className="pt-8">
+                <button onClick={() => setStep('ORG_CONTEXT')} className="bg-hs-blue text-white px-10 py-5 rounded-full font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-xl hover:-translate-y-1 flex items-center group">
+                  {t('cm.btn.start')} <ArrowRight size={20} className="ml-3 group-hover:translate-x-2 transition-transform" />
+                </button>
+             </div>
+          </div>
+          <div className="lg:w-1/2 space-y-12 sticky top-24">
+             <div className="relative group">
+                <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=1200" className="rounded-[3rem] shadow-2xl z-10 relative group-hover:scale-[1.02] transition-transform duration-700" alt="Change Management" />
+                <div className="absolute -bottom-8 -right-8 w-full h-full border-4 border-hs-orange/30 rounded-[3rem] -z-10 group-hover:-translate-x-2 group-hover:-translate-y-2 transition-transform duration-700"></div>
+                <div className="absolute -top-10 -left-10 bg-white p-10 rounded-[2.5rem] shadow-2xl flex flex-col items-center justify-center text-hs-blue animate-fade-in border border-slate-100">
+                   <RefreshCw size={48} className="mb-2 text-hs-accent" />
+                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Continuous Flux</span>
+                </div>
+             </div>
+          </div>
+       </div>
+    </div>
+  );
+
+  return (
+    <div className="pt-24 pb-20 min-h-screen bg-slate-50 px-4">
+      <div className="max-w-7xl mx-auto">
+        {step === 'LANDING' && renderLanding()}
+        {step === 'ORG_CONTEXT' && <OrgContextForm user={user} onComplete={(data) => { setOrgInfo(data); setStep('SETUP'); }} />}
+        {step === 'SETUP' && (
+          <div className="max-w-4xl mx-auto py-12 animate-fade-in space-y-10">
+             <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100">
+                <h2 className="text-3xl font-black text-hs-blue uppercase mb-8 flex items-center"><Brain className="mr-3 text-hs-orange" /> {t('cm.setup.title')}</h2>
                 <div className="space-y-6">
-                   {/* Company Box */}
-                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                     <h2 className="text-lg font-bold text-hs-blue mb-4 flex items-center">
-                       <Building className="mr-2 text-hs-accent" size={20}/> Unternehmensprofil
-                     </h2>
-                     <div className="space-y-4">
-                       <div>
-                         <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Webseite (URL)</label>
-                         <div className="relative">
-                            <input 
-                              type="url"
-                              placeholder="https://www.ihrefirma.de"
-                              value={companyUrl}
-                              onChange={(e) => setCompanyUrl(e.target.value)}
-                              className="w-full pl-10 rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-hs-accent focus:border-transparent outline-none"
-                            />
-                            <Globe size={16} className="absolute left-3 top-3 text-slate-400" />
-                         </div>
-                       </div>
-                       
-                       <div>
-                         <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Kurzbeschreibung & Kultur</label>
-                         <textarea 
-                            placeholder="Beschreiben Sie Branche, Produkte und vor allem die gelebte Kultur..."
-                            value={companyDesc}
-                            onChange={(e) => setCompanyDesc(e.target.value)}
-                            className="w-full h-32 rounded-lg border-slate-300 border p-3 text-sm focus:ring-2 focus:ring-hs-accent focus:border-transparent outline-none resize-none mb-3"
-                         />
-                       </div>
+                   <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('cm.setup.scenario')}</label>
+                      <textarea value={scenario} onChange={e => setScenario(e.target.value)} className="w-full h-32 p-6 bg-slate-50 rounded-2xl border-slate-200 border-2 outline-none focus:border-hs-blue transition-all text-lg" placeholder="Was soll sich ändern? z.B. Einführung einer flachen Hierarchie..." />
+                   </div>
+                   <button onClick={handleGenerateCultureQuestions} disabled={generatingQuestions || !scenario} className="w-full bg-hs-blue text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-lg flex items-center justify-center">
+                      {generatingQuestions ? <Loader2 className="animate-spin mr-3" /> : <MessageCircleQuestion className="mr-3" />} {t('cm.btn.questions')}
+                   </button>
+                </div>
+             </div>
 
-                        <div>
-                        <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Größe</label>
-                        <select 
-                          value={companySize} 
-                          onChange={(e) => setCompanySize(e.target.value)}
-                          className="w-full rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-hs-accent focus:border-transparent outline-none bg-white"
-                        >
-                          <option>Start-up (1-50 MA)</option>
-                          <option>Mittelstand (50-250 MA)</option>
-                          <option>Großunternehmen (250+ MA)</option>
-                          <option>Konzernstruktur</option>
-                        </select>
-                      </div>
+             {questionsGenerated && (
+               <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 animate-fade-in">
+                  <h3 className="text-xl font-black text-hs-blue uppercase mb-8">{t('cm.setup.culture')}</h3>
+                  <div className="space-y-6 mb-10">
+                     {cultureQuestions.map(q => (
+                       <div key={q.id}>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">{q.text}</label>
+                          <textarea value={cultureAnswers[q.id] || ''} onChange={e => setCultureAnswers({...cultureAnswers, [q.id]: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-hs-accent" placeholder={q.placeholder} />
+                       </div>
+                     ))}
+                  </div>
+                  <div>
+                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Beratungs-Methode wählen</label>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {TOOLS.map(tool => (
+                          <button key={tool.id} onClick={() => setSelectedTool(tool.id)} className={`p-6 rounded-2xl border-2 text-left transition-all ${selectedTool === tool.id ? 'border-hs-blue bg-hs-blue/5 ring-4 ring-hs-blue/10' : 'border-slate-50 hover:border-hs-blue hover:bg-slate-50'}`}>
+                             <div className="flex items-center space-x-3 mb-2">
+                                <tool.icon size={20} className={selectedTool === tool.id ? 'text-hs-blue' : 'text-slate-400'} />
+                                <span className="font-black uppercase text-xs tracking-tight">{tool.name}</span>
+                             </div>
+                             <p className="text-[10px] text-slate-500 leading-relaxed">{tool.description}</p>
+                          </button>
+                        ))}
                      </div>
                   </div>
-
-                  {/* Scenario Box */}
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                    <h2 className="text-lg font-bold text-hs-blue mb-4 flex items-center">
-                      <FileText className="mr-2 text-hs-accent" size={20}/> Szenario definieren
-                    </h2>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Veränderungsvorhaben</label>
-                        <textarea 
-                          value={scenario}
-                          onChange={(e) => setScenario(e.target.value)}
-                          placeholder="z.B. Einführung einer neuen ERP-Software gegen den Widerstand des Vertriebs..."
-                          className="w-full h-32 rounded-lg border-slate-300 border p-3 text-sm focus:ring-2 focus:ring-hs-accent focus:border-transparent outline-none resize-none"
-                        ></textarea>
-                      </div>
-                      
-                      {/* Generate Button Area */}
-                      {!questionsGenerated && (
-                        <div className="pt-2">
-                          <button
-                            onClick={handleGenerateCultureQuestions}
-                            disabled={!scenario.trim() || !companyDesc.trim() || generatingQuestions}
-                            className={`w-full py-3 rounded-lg font-bold border-2 border-dashed flex items-center justify-center transition-all ${
-                              (!scenario.trim() || !companyDesc.trim()) 
-                                ? 'border-slate-200 text-slate-300 cursor-not-allowed' 
-                                : 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300'
-                            }`}
-                          >
-                            {generatingQuestions ? (
-                              <Loader2 className="animate-spin" />
-                            ) : (
-                              <>
-                                <Sparkles size={18} className="mr-2" />
-                                Systemische Reflexionsfragen generieren
-                              </>
-                            )}
-                          </button>
-                          <p className="text-xs text-center text-slate-400 mt-2">
-                            Erforderlich für den nächsten Schritt
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Column: Generated Questions OR Tool Selection Placeholder */}
-                <div className="space-y-6">
-                  {questionsGenerated ? (
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-indigo-100 animate-fade-in relative">
-                       <div className="absolute -top-3 left-6 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center shadow-sm">
-                         <Sparkles size={12} className="mr-1" /> Systemischer Deep-Dive
-                       </div>
-                       <div className="mt-4 space-y-6 max-h-[600px] overflow-y-auto pr-2">
-                         {cultureQuestions.map((q, idx) => (
-                           <div key={q.id} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                             <label className="block text-sm font-bold text-indigo-900 mb-2 leading-snug">
-                               {idx + 1}. {q.text}
-                             </label>
-                             <textarea 
-                               placeholder={q.placeholder}
-                               value={cultureAnswers[q.id] || ''}
-                               onChange={(e) => handleCultureAnswerChange(q.id, e.target.value)}
-                               className="w-full h-20 rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-indigo-400 focus:border-transparent outline-none resize-none bg-white"
-                             />
-                           </div>
-                         ))}
-                       </div>
-                       <div className="mt-6 flex justify-end">
-                          <p className="text-xs text-slate-400 italic mr-4 self-center">Bitte beantworten Sie die Fragen.</p>
-                          <button 
-                            onClick={handleStartAssessment}
-                            className="bg-hs-accent text-white px-6 py-2 rounded-lg font-bold hover:bg-sky-400 shadow-md flex items-center"
-                          >
-                             Weiter zur Tool-Auswahl <ArrowRight size={16} className="ml-2"/>
-                          </button>
-                       </div>
-                    </div>
-                  ) : (
-                    <div className="bg-slate-50 p-8 rounded-2xl border-2 border-dashed border-slate-200 h-full flex flex-col items-center justify-center text-slate-400 text-center">
-                      <MessageCircleQuestion size={48} className="mb-4 text-slate-300" />
-                      <p className="font-medium">Definieren Sie erst Szenario und Profil,</p>
-                      <p className="text-sm">um maßgeschneiderte Reflexionsfragen zu erhalten.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 2: TOOL SELECTION & DETAIL ASSESSMENT */}
-          {step === 'ASSESSMENT' && (
-             <div className="lg:col-span-12 max-w-5xl mx-auto w-full animate-fade-in">
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                 {/* Sidebar: Tool Selection */}
-                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-fit">
-                    <button onClick={() => setStep('SETUP')} className="text-slate-400 hover:text-hs-blue flex items-center text-sm mb-4">
-                      <ChevronLeft size={16} className="mr-1"/> Zurück zum Kontext
-                    </button>
-                    <h2 className="text-lg font-bold text-hs-blue mb-4 flex items-center">
-                      <Brain className="mr-2 text-hs-accent" size={20}/> Instrument wählen
-                    </h2>
-                    <div className="grid grid-cols-1 gap-2 max-h-[600px] overflow-y-auto">
-                      {TOOLS.map((tool) => {
-                        const Icon = tool.icon;
-                        const isSelected = selectedTool === tool.id;
-                        return (
-                          <button
-                            key={tool.id}
-                            onClick={() => {
-                              setSelectedTool(tool.id);
-                              // Trigger update of questions immediately when tool changes
-                              setTimeout(() => {
-                                const qs = getAssessmentQuestions(tool.id);
-                                setQuestions(qs);
-                                const initAnswers: Record<string, string> = {};
-                                qs.forEach(q => initAnswers[q.id] = '');
-                                setAnswers(initAnswers);
-                              }, 0);
-                            }}
-                            className={`flex items-start text-left p-3 rounded-lg transition-all border ${
-                              isSelected 
-                                ? 'bg-hs-blue text-white border-hs-blue shadow-md transform scale-[1.02]' 
-                                : 'bg-slate-50 text-slate-600 border-transparent hover:bg-slate-100 hover:border-slate-200'
-                            }`}
-                          >
-                            <Icon size={20} className={`mt-0.5 mr-3 flex-shrink-0 ${isSelected ? 'text-hs-accent' : 'text-slate-400'}`} />
-                            <div>
-                              <span className="block font-bold text-sm">{tool.name}</span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Main: Tool Specific Questions */}
-                  <div className="md:col-span-2 bg-white p-8 rounded-2xl shadow-lg border border-slate-200">
-                    <div className="mb-6 border-b border-slate-100 pb-4">
-                      <h2 className="text-2xl font-bold text-hs-blue">Detail-Analyse: {TOOLS.find(t => t.id === selectedTool)?.name}</h2>
-                      <p className="text-slate-500 text-sm mt-1">{TOOLS.find(t => t.id === selectedTool)?.description}</p>
-                    </div>
-
-                    <div className="space-y-6">
-                      {questions.map((q, idx) => (
-                        <div key={q.id}>
-                          <label className="block text-sm font-bold text-slate-700 mb-2">
-                            {idx + 1}. {q.text}
-                          </label>
-                          <textarea
-                            value={answers[q.id] || ''}
-                            onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                            placeholder={q.placeholder}
-                            className="w-full h-24 rounded-lg border-slate-300 border p-3 text-sm focus:ring-2 focus:ring-hs-accent focus:border-transparent outline-none resize-none bg-slate-50 focus:bg-white transition-colors"
-                          ></textarea>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
-                        <button 
-                          onClick={handleGenerate}
-                          className="bg-hs-accent text-white px-8 py-3 rounded-full font-bold hover:bg-sky-400 shadow-lg hover:shadow-xl flex items-center"
-                        >
-                          Finale Strategie generieren <Brain className="ml-2" size={18} />
-                        </button>
-                    </div>
-                  </div>
+                  <button onClick={handleStartAssessment} className="w-full mt-10 bg-hs-orange text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-hs-blue transition-all shadow-xl">Audit Starten</button>
                </div>
-             </div>
-          )}
-
-          {/* STEP 3: RESULTS (Original Result View) */}
-          {(step === 'RESULT' || loading) && (
-            <div className="lg:col-span-12 animate-fade-in w-full">
-               {loading && (
-                  <div className="max-w-3xl mx-auto bg-white p-12 rounded-2xl shadow-sm text-center">
-                    <Loader2 className="animate-spin mx-auto text-hs-accent mb-4" size={48} />
-                    <h3 className="text-xl font-bold text-hs-blue mb-2">Die AI entwickelt Ihre Strategie...</h3>
-                    <p className="text-slate-500">Wir kombinieren Ihre Kontext-Reflexion mit dem {TOOLS.find(t => t.id === selectedTool)?.name}.</p>
-                  </div>
-               )}
-
-              {!loading && error && (
-                <div className="max-w-3xl mx-auto bg-red-50 border border-red-200 text-red-600 p-6 rounded-xl flex items-center mb-6">
-                  <AlertTriangle className="mr-3" />
-                  <div>
-                    <p className="font-bold">Fehler bei der Analyse</p>
-                    <p className="text-sm">{error}</p>
-                    <button onClick={() => setStep('ASSESSMENT')} className="text-sm underline mt-2">Zurück zur Eingabe</button>
-                  </div>
-                </div>
-              )}
-
-              {result && !loading && (
-                <div className="space-y-6 max-w-5xl mx-auto">
-                  
-                  {/* Action Bar - Hidden on Print */}
-                  <div className="flex justify-between items-center mb-6 no-print">
-                    <div className="flex space-x-4">
-                      <button onClick={handleNewAnalysisKeepContext} className="bg-white border border-slate-200 text-slate-600 hover:text-hs-blue hover:border-hs-blue px-4 py-2 rounded-lg shadow-sm flex items-center font-medium transition-all">
-                        <ChevronLeft size={18} className="mr-1"/> Anderes Tool wählen (Kontext behalten)
-                      </button>
-                    </div>
-                     <button onClick={handleResetFull} className="text-slate-400 hover:text-red-500 flex items-center text-sm font-medium">
-                        <RefreshCw size={14} className="mr-1"/> Neues Projekt starten
-                      </button>
-                  </div>
-
-                  {/* Header of Result */}
-                  <div className="bg-white p-8 rounded-2xl border-b-4 border-hs-accent shadow-lg">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                          <span className="text-hs-accent font-bold uppercase tracking-wider text-xs mb-1 block">Ergebnisbericht</span>
-                          <h2 className="text-3xl font-bold text-hs-blue">{TOOLS.find(t => t.id === result.toolId)?.name}</h2>
-                      </div>
-                      <div className="bg-slate-100 p-3 rounded-xl no-print">
-                        <FileText size={32} className="text-slate-400" />
-                      </div>
-                    </div>
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">Executive Summary</h3>
-                    <p className="text-slate-700 leading-relaxed text-lg">{result.summary}</p>
-                  </div>
-
-                  {/* Dynamic Content Body */}
-                  <div className="bg-slate-50/50 rounded-2xl">
-                    {renderContent()}
-                  </div>
-
-                  {/* Print / Download Area */}
-                  <div className="flex justify-center pt-8 pb-12 no-print">
-                    <button 
-                      onClick={handlePrint}
-                      className="bg-hs-blue text-white px-8 py-3 rounded-lg font-medium hover:bg-slate-800 transition-colors shadow-lg flex items-center"
-                    >
-                      <Printer size={18} className="mr-2" />
-                      Ergebnis als PDF drucken / speichern
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+             )}
+          </div>
+        )}
+        {step === 'ASSESSMENT' && renderAssessment()}
+        {step === 'RESULT' && renderResult()}
       </div>
     </div>
   );

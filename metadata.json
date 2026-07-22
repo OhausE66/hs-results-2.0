@@ -1,5 +1,6 @@
 {
   "name": "HS-Results AI Platform",
   "description": "Next-generation AI-powered consultancy platform offering automated Change Management solutions and a dynamic Leadership Radar dashboard.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": []
 }

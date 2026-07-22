@@ -1,430 +1,1301 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, 
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, 
-  ScatterChart, Scatter, ZAxis, ReferenceLine, Cell 
+  ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, Cell, ReferenceLine
 } from 'recharts';
-import { analyzeLeadershipTeam, generateEmployeeCoaching, getLeadershipAuditQuestions } from '../services/geminiService';
-import { Employee, CoachingGuide, AssessmentQuestion, AssessmentResponse } from '../types';
+import { Employee, ViewState } from '../types';
 import { 
-  Users, Activity, Sparkles, AlertCircle, LayoutDashboard, 
-  UserPlus, MessageSquare, Target, TrendingUp, AlertTriangle, Briefcase, X
+  Users, Activity, Sparkles, LayoutDashboard, 
+  MessageSquare, Trash2, Plus, Edit, Brain, Heart, Loader2,
+  ChevronLeft, ArrowRight, Target, Layers, Zap, CheckCircle, Search, TrendingUp, BarChart3, UserCheck, AlertCircle, Calendar, ClipboardCheck, Briefcase, FileText, ArrowRightLeft, X, Info, Save, MessageCircle, HelpCircle, ArrowDownCircle, Lightbulb, UserPlus, Settings, SaveAll, FileSearch, ShieldCheck, Database
 } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
+import { GoogleGenAI } from "@google/genai";
+import { Auth } from '../components/Auth';
+import { saveProjectSession } from '../services/firebase';
 
-// Enhanced Mock Data
-const MOCK_DATA: Employee[] = [
-  { id: 1, name: "Anna Müller", role: "Sales Lead", performance: 95, motivation: 60, workload: 92, department: "Sales" },
-  { id: 2, name: "Ben Weber", role: "Senior Dev", performance: 92, motivation: 85, workload: 50, department: "IT" },
-  { id: 3, name: "Carla Schmidt", role: "Support", performance: 55, motivation: 45, workload: 85, department: "Support" },
-  { id: 4, name: "David Klein", role: "HR Manager", performance: 78, motivation: 72, workload: 60, department: "HR" },
-  { id: 5, name: "Elena Fischer", role: "Marketing", performance: 88, motivation: 90, workload: 70, department: "Marketing" },
-  { id: 6, name: "Felix Lang", role: "Junior Dev", performance: 40, motivation: 95, workload: 80, department: "IT" },
-  { id: 7, name: "Greta Wolf", role: "Sales Rep", performance: 85, motivation: 20, workload: 40, department: "Sales" },
+const TEAM_SCENARIO = {
+  title: "Transformation der Sales-Abteilung 2025",
+  description: "Das Team befindet sich im Übergang von einem rein transaktionalen Verkauf hin zu einer beratungsorientierten Solution-Selling Strategie. Die Marktanforderungen steigen, während die internen Prozesse noch auf alten Hierarchien basieren. Ziel ist die Steigerung der Eigenverantwortung bei gleichzeitiger Entlastung der Führungsebene.",
+  focus: "Resilienz, Digitale Kompetenz, Kollaboration"
+};
+
+const INITIAL_DATA: Employee[] = [
+  { 
+    id: 1, name: "Anna Müller", role: "Sales Lead", performance: 95, motivation: 60, workload: 92, department: "Sales", hbdiQuadrant: 'A',
+    observations: {
+      positive: ["Herausragende Abschlussquote bei Großkunden", "Exzellente Marktkenntnis", "Analytische Stärke bei Forecasts"],
+      critical: ["Hohe Burnout-Gefahr durch Workload", "Vernachlässigt die Förderung von Junior-Talenten", "Kommuniziert oft zu direkt/harsch"]
+    }
+  },
+  { 
+    id: 2, name: "Ben Weber", role: "Senior Dev", performance: 92, motivation: 85, workload: 50, department: "IT", hbdiQuadrant: 'B',
+    observations: {
+      positive: ["Fehlerfreie Implementierung komplexer Logiken", "Strukturiert Arbeitsabläufe vorbildlich", "Hohe Zuverlässigkeit"],
+      critical: ["Wenig Begeisterung für agile Experimente", "Sucht selten den Austausch mit anderen Abteilungen"]
+    }
+  },
+  { 
+    id: 3, name: "Carla Schmidt", role: "Support Manager", performance: 55, motivation: 45, workload: 85, department: "Support", hbdiQuadrant: 'C',
+    observations: {
+      positive: ["Hohe Empathie in schwierigen Kundenfällen", "Bindeglied innerhalb des Teams"],
+      critical: ["Niedrige Fallabschlussquote", "Zögert bei technologischen Neuerungen", "Braucht sehr viel Bestätigung von außen"]
+    }
+  },
 ];
 
-type TabId = 'overview' | 'matrix' | 'profiles';
+const DEMO_LEAD_PROFILE = {
+  company: "InnovateTech Solutions GmbH",
+  employeeCount: "450",
+  position: "VP Engineering",
+  spanOfControl: "12",
+  challengeSketch: "Das Team wächst schnell, aber die agile Reife stagniert. Es gibt massive Spannungen zwischen der Produktentwicklung (Silo A) und dem Quality Engineering (Silo B). Ich verbringe 80% meiner Zeit mit operativem Feuerlöschen statt mit strategischer Personalentwicklung.",
+  finalDecision: "Einführung von Cross-Functional Chapters und Empowerment der Lead-Engineers durch Coaching-Routinen.",
+  reflectionAnswers: [
+    "Den Erwartungen der Geschäftsführung nach sofortiger Feature-Delivery.",
+    "Die Team-Produktivität würde kurzzeitig einbrechen, aber strukturelle Engpässe würden gnadenlos sichtbar.",
+    "Meine Tendenz, bei Krisen sofort die Kontrolle zu übernehmen, statt das Team eigene Lösungen finden zu lassen.",
+    "Das mittlere Management, da es durch die Silo-Strukturen seine Daseinsberechtigung legitimiert.",
+    "Der unausgesprochene Konflikt zwischen Innovationsgeschwindigkeit und Qualitätsstabilität."
+  ],
+  questions: [
+    "Wessen Erwartungen versuchen Sie am meisten zu erfüllen?",
+    "Was würde passieren, wenn Sie das Problem eine Woche lang ignorieren?",
+    "Welchen Anteil an der aktuellen Situation haben Ihre eigenen Routinen?",
+    "Wer im Team profitiert heimlich davon, dass sich nichts ändern will?",
+    "Welcher unausgesprochene Konflikt wird durch dieses Sachthema überlagert?"
+  ]
+};
 
-export const LeadershipRadar: React.FC = () => {
+const INSTRUMENT_TEMPLATES = {
+  appraisal: {
+    id: 'appraisal',
+    title: "Mitarbeiterjahresgespräch",
+    icon: Calendar,
+    sections: [
+      { h: "Rückblick & Erfolge", p: "Fokus auf die wichtigsten Meilensteine des letzten Jahres. Wo hat der Mitarbeiter einen Unterschied gemacht?" },
+      { h: "Zusammenarbeit & Führung", p: "Offene Reflexion: Was braucht der Mitarbeiter von mir als Führungskraft, um noch wirksamer zu sein?" },
+      { h: "Persönliche Entwicklung", p: "Welche Kompetenzen sollen im nächsten Jahr gezielt gestärkt werden? (Training/Coaching)" }
+    ]
+  },
+  targets: {
+    id: 'targets',
+    title: "Zielvereinbarung",
+    icon: Target,
+    sections: [
+      { h: "Hard Targets (KPIs)", p: "Messbare Ziele wie Umsatz, Ticket-Quote oder Projektabschlüsse. Zeitnah und SMART." },
+      { h: "Soft Targets (Behavioral)", p: "Verhaltensziele basierend auf den beobachteten kritischen Punkten (z.B. Feedback-Kultur)." },
+      { h: "Ressourcen-Commitment", p: "Welche Tools, Budgets oder Freiheiten stelle ich zur Verfügung?" }
+    ]
+  },
+  delegation: {
+    id: 'delegation',
+    title: "Delegations-Framework",
+    icon: ArrowRightLeft,
+    sections: [
+      { h: "Aufgaben-Kontext", p: "Warum ist diese Aufgabe wichtig für das große Ganze (Szenario)?" },
+      { h: "Verantwortungsrahmen", p: "Darf der Mitarbeiter entscheiden (Empowerment) oder nur zuarbeiten (Assistenz)?" },
+      { h: "Check-in Intervalle", p: "Festlegung von Terminen zur Abstimmung, um Micromanagement zu vermeiden." }
+    ]
+  },
+  evaluation: {
+    id: 'evaluation',
+    title: "Leistungsbewertung",
+    icon: ClipboardCheck,
+    sections: [
+      { h: "Fachliche Performance", p: "Bewertung der Arbeitsergebnisse gegen die vereinbarten Standards." },
+      { h: "Systemischer Beitrag", p: "Wie wirkt der Mitarbeiter auf die Teamkultur und das Gesamtergebnis?" },
+      { h: "Zukunfts-Potenzial", p: "Ist der Mitarbeiter bereit für mehr Verantwortung oder eine neue Rolle?" }
+    ]
+  }
+};
+
+type TabId = 'overview' | 'matrix' | 'profiles' | 'hbdi';
+type OnboardingStep = 'LANDING' | 'CONTEXT' | 'CHALLENGE' | 'REFLECTION' | 'DECISION' | 'ANALYSIS' | 'DASHBOARD' | 'TEAM_SKETCH';
+
+interface LeadershipRadarProps {
+  user: any;
+  setView: (v: ViewState) => void;
+}
+
+export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.ReactElement => {
+  const { t, language } = useLanguage();
+  const [step, setStep] = useState<OnboardingStep>('LANDING');
   const [activeTab, setActiveTab] = useState<TabId>('overview');
-  
-  // Analysis State
-  const [aiAnalysis, setAiAnalysis] = useState<string>('');
-  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-  
-  // Assessment Modal State
-  const [showAssessment, setShowAssessment] = useState(false);
-  const [assessmentQuestions] = useState<AssessmentQuestion[]>(getLeadershipAuditQuestions());
-  const [assessmentAnswers, setAssessmentAnswers] = useState<Record<string, string>>({});
-
-  // Profile State
+  const [employees, setEmployees] = useState<Employee[]>(INITIAL_DATA);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [coachingGuide, setCoachingGuide] = useState<CoachingGuide | null>(null);
-  const [loadingCoaching, setLoadingCoaching] = useState(false);
+  const [activeInstrument, setActiveInstrument] = useState<keyof typeof INSTRUMENT_TEMPLATES | null>(null);
+  const [instrumentNotes, setInstrumentNotes] = useState<Record<string, string>>({});
+  
+  // Team Editor States
+  const [isEditingTeam, setIsEditingTeam] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
 
-  // Handlers
-  const handleStartAnalysis = () => {
-    // Clear previous answers if re-running or keep them? Let's keep them for editability.
-    if(Object.keys(assessmentAnswers).length === 0) {
-      const init: Record<string, string> = {};
-      assessmentQuestions.forEach(q => init[q.id] = '');
-      setAssessmentAnswers(init);
+  // Leadership Specific Context States
+  const [leaderContext, setLeaderContext] = useState({
+    company: '',
+    employeeCount: '',
+    position: '',
+    spanOfControl: '',
+    challengeSketch: '',
+    finalDecision: '',
+    chosenPath: ''
+  });
+  
+  const [systemicQuestions, setSystemicQuestions] = useState<string[]>([]);
+  const [reflectionAnswers, setReflectionAnswers] = useState<string[]>(['', '', '', '', '']);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  const [detailedAnalysis, setDetailedAnalysis] = useState<any>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step]);
+
+  const loadDemoProfile = () => {
+    setLeaderContext({
+      company: DEMO_LEAD_PROFILE.company,
+      employeeCount: DEMO_LEAD_PROFILE.employeeCount,
+      position: DEMO_LEAD_PROFILE.position,
+      spanOfControl: DEMO_LEAD_PROFILE.spanOfControl,
+      challengeSketch: DEMO_LEAD_PROFILE.challengeSketch,
+      finalDecision: DEMO_LEAD_PROFILE.finalDecision,
+      chosenPath: 'Struktur'
+    });
+    setSystemicQuestions(DEMO_LEAD_PROFILE.questions);
+    setReflectionAnswers(DEMO_LEAD_PROFILE.reflectionAnswers);
+    setStep('CHALLENGE');
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) {
+      alert("Bitte melden Sie sich an, um Ihr Profil im Vault zu speichern.");
+      return;
     }
-    setShowAssessment(true);
-  };
-
-  const handleAssessmentSubmit = async () => {
-    setShowAssessment(false);
-    setLoadingAnalysis(true);
-    
-    // Format answers
-    const formattedAnswers: AssessmentResponse[] = assessmentQuestions.map(q => ({
-      questionId: q.id,
-      questionText: q.text,
-      answer: assessmentAnswers[q.id] || "Keine Angabe"
-    }));
-
-    const result = await analyzeLeadershipTeam(MOCK_DATA, formattedAnswers);
-    setAiAnalysis(result);
-    setLoadingAnalysis(false);
-  };
-
-  const handleGenerateCoaching = async (emp: Employee) => {
-    setLoadingCoaching(true);
+    setSaveStatus('saving');
     try {
-      const guide = await generateEmployeeCoaching(emp);
-      setCoachingGuide(guide);
+      await saveProjectSession(user.uid, {
+        title: `Führung: ${leaderContext.company || 'Unbenanntes Szenario'}`,
+        toolId: 'leadership_radar',
+        inputs: {
+          context: leaderContext,
+          reflectionAnswers,
+          systemicQuestions,
+          employees
+        },
+        results: detailedAnalysis || { summary: "Fortschritt gespeichert" },
+        updatedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      });
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (e) {
       console.error(e);
+      setSaveStatus('idle');
     }
-    setLoadingCoaching(false);
   };
 
-  // Renderers
-  const renderMarkdown = (text: string) => {
-    return text.split('\n').map((line, i) => {
-      if (line.startsWith('###')) return <h3 key={i} className="text-lg font-bold text-hs-blue mt-4 mb-2">{line.replace('###', '')}</h3>;
-      if (line.startsWith('**')) return <p key={i} className="font-bold mt-2">{line.replace(/\*\*/g, '')}</p>;
-      if (line.startsWith('-')) return <li key={i} className="ml-4 mb-1 text-slate-700 list-disc">{line.replace('-', '')}</li>;
-      return <p key={i} className="mb-2 text-slate-600 leading-relaxed">{line}</p>;
-    });
+  const generateSystemicQuestions = async () => {
+    setLoadingQuestions(true);
+    setStep('REFLECTION');
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const prompt = `Du bist ein Senior Executive Coach. Basierend auf dieser Führungsherausforderung: "${leaderContext.challengeSketch}" im Kontext eines ${leaderContext.position} mit einer Führungsspanne von ${leaderContext.spanOfControl}, generiere genau 5 kurze, tiefgehende, paradoxe systemische Reflexionsfragen. Die Fragen sollen helfen, blinde Flecken in der Team-Dynamik und der eigenen Rolle aufzudecken. Antworte nur mit den Fragen als einfache liste, getrennt durch Zeilenumbrüche.`;
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt
+      });
+      
+      const questions = response.text?.split('\n').filter(q => q.trim().length > 5).slice(0, 5) || [
+        "Wessen Erwartungen versuchen Sie am meisten zu erfüllen?",
+        "Was würde passieren, wenn Sie das Problem eine Woche lang ignorieren?",
+        "Welchen Anteil an der aktuellen Situation haben Ihre eigenen Routinen?",
+        "Wer im Team profitiert heimlich davon, dass sich nichts ändern will?",
+        "Welcher unausgesprochene Konflikt wird durch dieses Sachthema überlagert?"
+      ];
+      setSystemicQuestions(questions);
+    } catch (e) {
+      console.error(e);
+      setSystemicQuestions([
+        "Welcher Teil der Herausforderung liegt wirklich in Ihrem Kontrollbereich?",
+        "Was ist der Gewinn für die Organisation, wenn alles so bleibt wie es ist?",
+        "Welche unausgesprochene Regel wird hier gerade befolgt?",
+        "Wie müssten Sie sich verhalten, um das Problem garantiert zu verschlimmern?",
+        "Woran würden Ihre Kritiker merken, dass Sie das Ziel erreicht haben?"
+      ]);
+    } finally {
+      setLoadingQuestions(false);
+    }
   };
 
-  const renderOverview = () => (
-    <div className="space-y-8 animate-fade-in relative">
-       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Chart 1: Team Radar */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h3 className="text-lg font-semibold text-slate-800 mb-6 flex items-center">
-              <Users className="mr-2 text-hs-accent" size={20} /> Team Fähigkeiten
-            </h3>
-            <div className="h-80 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={MOCK_DATA.slice(0,5)}>
-                  <PolarGrid />
-                  <PolarAngleAxis dataKey="name" tick={{fontSize: 10}} />
-                  <PolarRadiusAxis angle={30} domain={[0, 100]} />
-                  <Radar name="Performance" dataKey="performance" stroke="#0f172a" fill="#0f172a" fillOpacity={0.2} />
-                  <Radar name="Motivation" dataKey="motivation" stroke="#0ea5e9" fill="#0ea5e9" fillOpacity={0.4} />
-                  <Tooltip />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-            <p className="text-xs text-center text-slate-400 mt-2">Vergleich Top 5 Mitarbeiter</p>
+  const generateDetailedAnalysis = async (path: string) => {
+    setLeaderContext(prev => ({ ...prev, chosenPath: path }));
+    setStep('ANALYSIS');
+    setLoadingAnalysis(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const prompt = `Analysiere als Senior Management Consultant die folgende Führungssituation und erstelle einen ausführlichen Strategie-Bericht.
+      UNTERNEHMEN: ${leaderContext.company}
+      POSITION: ${leaderContext.position}
+      HERAUSFORDERUNG: ${leaderContext.challengeSketch}
+      ENTSCHEIDUNG: ${leaderContext.finalDecision}
+      GEWÄHLTER WEG: ${path}
+      REFLEXIONS-IMPULSE: ${reflectionAnswers.join(' | ')}
+      
+      Erstelle ein JSON mit folgender Struktur:
+      {
+        "management_summary": "Ausführliche Zusammenfassung",
+        "strategic_levers": ["Hebel 1", "Hebel 2", "Hebel 3"],
+        "cultural_risks": ["Risiko 1", "Risiko 2"],
+        "impact_analysis": "Wie wird sich der gewählte Weg '${path}' auf die Team-Performance und Motivation auswirken?",
+        "next_steps": ["Schritt 1", "Schritt 2", "Schritt 3"]
+      }`;
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: { responseMimeType: "application/json" }
+      });
+      
+      setDetailedAnalysis(JSON.parse(response.text || '{}'));
+    } catch (e) {
+      console.error(e);
+      setDetailedAnalysis({
+        management_summary: "Fehler bei der KI-Generierung. Bitte prüfen Sie Ihre Verbindung.",
+        strategic_levers: ["Analyse manuell durchführen"],
+        cultural_risks: ["Keine Daten"],
+        impact_analysis: "N/A",
+        next_steps: ["Vorgang wiederholen"]
+      });
+    } finally {
+      setLoadingAnalysis(false);
+    }
+  };
+
+  const handleSaveEmployee = () => {
+    if (!editingEmployee?.name) return;
+    if (editingEmployee.id) {
+      setEmployees(prev => prev.map(e => e.id === editingEmployee.id ? (editingEmployee as Employee) : e));
+    } else {
+      const newEmp = { ...editingEmployee, id: Date.now() } as Employee;
+      setEmployees(prev => [...prev, newEmp]);
+    }
+    setEditingEmployee(null);
+  };
+
+  const handleDeleteEmployee = (id: number) => {
+    if (confirm("Mitarbeiter wirklich aus dem Radar entfernen?")) {
+      setEmployees(prev => prev.filter(e => e.id !== id));
+    }
+  };
+
+  const radarData = [
+    { subject: 'Performance', A: employees.length > 0 ? employees.reduce((acc, e) => acc + (e.performance || 0), 0) / employees.length : 0, fullMark: 100 },
+    { subject: 'Motivation', A: employees.length > 0 ? employees.reduce((acc, e) => acc + (e.motivation || 0), 0) / employees.length : 0, fullMark: 100 },
+    { subject: 'Workload', A: employees.length > 0 ? employees.reduce((acc, e) => acc + (e.workload || 0), 0) / employees.length : 0, fullMark: 100 },
+    { subject: 'Self-Org', A: 75, fullMark: 100 },
+    { subject: 'Resilience', A: 68, fullMark: 100 },
+  ];
+
+  const filteredEmployees = employees.filter(e => 
+    e.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    e.role.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const renderLanding = () => (
+    <div className="max-w-6xl mx-auto py-12 animate-fade-in px-4">
+       <div className="flex flex-col lg:flex-row items-start gap-16 mb-24">
+          <div className="lg:w-1/2 space-y-8">
+             <div className="flex items-center space-x-4 mb-2">
+                <div className="h-[3px] w-16 bg-hs-orange"></div>
+                <p className="text-hs-orange font-black uppercase tracking-[0.3em] text-sm">{t('radar.subtitle')}</p>
+             </div>
+             <h1 className="text-6xl font-black text-hs-blue uppercase tracking-tight leading-[0.95]">
+                {t('area.lead')}
+             </h1>
+             <div className="space-y-6 text-slate-600 leading-relaxed text-lg">
+                <p className="font-bold text-hs-blue text-xl leading-snug">
+                   {t('radar.landing.main')}
+                </p>
+                <div className="space-y-4">
+                   <p className="font-bold text-hs-blue">
+                      {t('radar.landing.text1')}
+                   </p>
+                   <ul className="space-y-2 ml-6">
+                      {[1, 2, 3].map(i => (
+                        <li key={i} className="flex items-center space-x-3">
+                           <div className="w-1.5 h-1.5 rounded-full bg-hs-orange shrink-0" />
+                           <span className="text-sm font-medium">{t(`radar.landing.card${i}`)}</span>
+                        </li>
+                      ))}
+                   </ul>
+                </div>
+                <div className="bg-white p-8 rounded-[2.5rem] border-l-8 border-hs-orange shadow-sm">
+                   <h4 className="font-black text-hs-blue uppercase text-xs tracking-widest mb-6 flex items-center">
+                      <Target size={16} className="mr-2" /> {t('radar.landing.list_title')}
+                   </h4>
+                   <ul className="space-y-4">
+                      {[1, 2, 3].map(i => (
+                        <li key={i} className="flex items-start space-x-3">
+                           <CheckCircle size={18} className="text-hs-orange mt-0.5 shrink-0" />
+                           <span className="text-sm font-bold text-hs-blue leading-relaxed">{t(`radar.landing.item${i}`)}</span>
+                        </li>
+                      ))}
+                   </ul>
+                </div>
+             </div>
+             <div className="pt-8">
+                <button 
+                  onClick={() => setStep('CONTEXT')}
+                  className="bg-hs-blue text-white px-10 py-5 rounded-full font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-xl hover:-translate-y-1 flex items-center group"
+                >
+                  Individuelles Setup starten
+                  <ArrowRight size={20} className="ml-3 group-hover:translate-x-2 transition-transform" />
+                </button>
+             </div>
           </div>
-
-          {/* Chart 2: Belastungs-Bar */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-             <h3 className="text-lg font-semibold text-slate-800 mb-6 flex items-center">
-              <Activity className="mr-2 text-red-500" size={20} /> Belastungs-Index
-            </h3>
-            <div className="h-80 w-full">
-               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={MOCK_DATA} layout="vertical" margin={{left: 20}}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" domain={[0, 100]} hide/>
-                  <YAxis dataKey="name" type="category" width={80} tick={{fontSize: 11}} />
-                  <Tooltip />
-                  <Bar dataKey="workload" name="Workload" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={20} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+          <div className="lg:w-1/2 sticky top-24">
+             <div className="relative group">
+                <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=1200" className="rounded-[3rem] shadow-2xl z-10 relative" alt="Leadership Dialogue" />
+                <div className="absolute -bottom-8 -right-8 w-full h-full border-4 border-hs-orange/30 rounded-[3rem] -z-10"></div>
+             </div>
           </div>
        </div>
+    </div>
+  );
 
-       {/* AI Analysis Box */}
-       <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-hs-blue to-slate-800 p-6 flex justify-between items-center text-white">
-            <div className="flex items-center">
-              <Sparkles className="mr-3 text-yellow-300" />
-              <div>
-                <h2 className="font-bold text-lg">Systemischer Team-Audit</h2>
-                <p className="text-slate-300 text-sm">AI-Analyse der Teamdynamik und Risikofaktoren</p>
+  const renderContextForm = () => (
+    <div className="max-w-4xl mx-auto py-12 animate-fade-in px-4">
+      <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-slate-100 relative">
+        <div className="flex justify-between items-start mb-10">
+          <div>
+            <h2 className="text-3xl font-black text-hs-blue uppercase mb-2 flex items-center">
+              <Briefcase className="mr-3 text-hs-orange" /> Führungskontext
+            </h2>
+            <p className="text-slate-500 uppercase text-[10px] font-black tracking-widest">Schritt 1: Rahmenbedingungen klären</p>
+          </div>
+          <button 
+            onClick={loadDemoProfile}
+            className="flex items-center space-x-2 text-xs font-black uppercase text-hs-accent hover:text-hs-orange transition-colors bg-slate-50 px-5 py-3 rounded-full border border-slate-100 shadow-sm"
+          >
+            <Sparkles size={16} />
+            <span>Beispiel laden</span>
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Unternehmen / Organisation</label>
+            <input 
+              type="text" 
+              value={leaderContext.company}
+              onChange={e => setLeaderContext({...leaderContext, company: e.target.value})}
+              className="w-full p-5 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:ring-2 focus:ring-hs-orange/20"
+              placeholder="z.B. HS-Logistics GmbH"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Anzahl Mitarbeiter (Gesamt)</label>
+            <input 
+              type="number" 
+              value={leaderContext.employeeCount}
+              onChange={e => setLeaderContext({...leaderContext, employeeCount: e.target.value})}
+              className="w-full p-5 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:ring-2 focus:ring-hs-orange/20"
+              placeholder="z.B. 150"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Ihre Position / Rolle</label>
+            <input 
+              type="text" 
+              value={leaderContext.position}
+              onChange={e => setLeaderContext({...leaderContext, position: e.target.value})}
+              className="w-full p-5 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:ring-2 focus:ring-hs-orange/20"
+              placeholder="z.B. Abteilungsleitung Operations"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Führungsspanne (Direkte Reports)</label>
+            <input 
+              type="number" 
+              value={leaderContext.spanOfControl}
+              onChange={e => setLeaderContext({...leaderContext, spanOfControl: e.target.value})}
+              className="w-full p-5 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:ring-2 focus:ring-hs-orange/20"
+              placeholder="z.B. 8"
+            />
+          </div>
+        </div>
+        
+        <div className="flex flex-col md:flex-row gap-4">
+          <button 
+            onClick={() => setStep('CHALLENGE')}
+            disabled={!leaderContext.company || !leaderContext.position}
+            className="flex-grow py-5 bg-hs-blue text-white rounded-3xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-xl disabled:opacity-30 flex items-center justify-center group"
+          >
+            Herausforderungen skizzieren <ArrowRight size={20} className="ml-3 group-hover:translate-x-2 transition-transform" />
+          </button>
+          <button 
+            onClick={() => setStep('TEAM_SKETCH')}
+            disabled={!leaderContext.company || !leaderContext.position}
+            className="flex-grow py-5 bg-white border-2 border-hs-blue text-hs-blue rounded-3xl font-black uppercase tracking-widest hover:bg-hs-blue hover:text-white transition-all shadow-md disabled:opacity-30 flex items-center justify-center group"
+          >
+            Mein Team führen <Users size={20} className="ml-3 group-hover:scale-110 transition-transform" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderTeamSketch = () => (
+    <div className="max-w-6xl mx-auto py-12 animate-fade-in px-4">
+      <div className="bg-white p-12 rounded-[4rem] shadow-2xl border border-slate-100">
+        <div className="flex justify-between items-end mb-10">
+          <div>
+            <h2 className="text-3xl font-black text-hs-blue uppercase mb-2 flex items-center">
+              <Users className="mr-3 text-hs-orange" /> Mein Team skizzieren
+            </h2>
+            <p className="text-slate-500 uppercase text-[10px] font-black tracking-widest">Einzelne Personen erfassen und bewerten</p>
+          </div>
+          <button 
+            onClick={() => setEditingEmployee({ name: '', role: '', performance: 70, motivation: 70, workload: 50, department: leaderContext.company || 'Team', hbdiQuadrant: 'A', observations: { positive: [], critical: [] } })}
+            className="bg-hs-orange text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-hs-blue transition-all flex items-center"
+          >
+            <UserPlus size={18} className="mr-2" /> Person hinzufügen
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          {employees.map(e => (
+            <div key={e.id} className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 relative group">
+              <div className="flex justify-between items-start mb-6">
+                <div className="w-12 h-12 bg-hs-blue text-white rounded-xl flex items-center justify-center">
+                  <UserCheck size={24} />
+                </div>
+                <div className="flex space-x-2">
+                  <button onClick={() => setEditingEmployee(e)} className="p-2 text-hs-blue hover:bg-white rounded-lg transition-colors"><Edit size={16}/></button>
+                  <button onClick={() => handleDeleteEmployee(e.id)} className="p-2 text-red-400 hover:bg-white rounded-lg transition-colors"><Trash2 size={16}/></button>
+                </div>
+              </div>
+              <h4 className="text-xl font-black text-hs-blue uppercase mb-1">{e.name}</h4>
+              <p className="text-[10px] text-hs-accent font-black uppercase tracking-widest mb-6">{e.role}</p>
+              
+              <div className="space-y-4">
+                <div>
+                   <div className="flex justify-between text-[8px] font-black uppercase text-slate-400 mb-1"><span>Performance</span><span>{e.performance}%</span></div>
+                   <div className="w-full bg-slate-200 h-1 rounded-full overflow-hidden">
+                      <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${e.performance}%` }} />
+                   </div>
+                </div>
+                <div>
+                   <div className="flex justify-between text-[8px] font-black uppercase text-slate-400 mb-1"><span>Motivation</span><span>{e.motivation}%</span></div>
+                   <div className="w-full bg-slate-200 h-1 rounded-full overflow-hidden">
+                      <div className="bg-hs-orange h-full rounded-full" style={{ width: `${e.motivation}%` }} />
+                   </div>
+                </div>
               </div>
             </div>
+          ))}
+        </div>
+
+        <div className="flex gap-4">
+          <button 
+            onClick={() => setStep('CONTEXT')}
+            className="flex-1 py-5 border-2 border-slate-100 text-slate-400 rounded-3xl font-black uppercase tracking-widest hover:bg-slate-50 transition-all"
+          >
+            Zurück zum Kontext
+          </button>
+          <button 
+            onClick={() => setStep('DASHBOARD')}
+            className="flex-[2] py-5 bg-hs-blue text-white rounded-3xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-xl flex items-center justify-center group"
+          >
+            Team-Dashboard öffnen <ArrowRight size={20} className="ml-3 group-hover:translate-x-2 transition-transform" />
+          </button>
+        </div>
+      </div>
+      
+      {editingEmployee && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4 animate-fade-in">
+           <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl p-10">
+              <h3 className="text-2xl font-black text-hs-blue uppercase mb-8">{editingEmployee.id ? 'Mitarbeiter bearbeiten' : 'Person hinzufügen'}</h3>
+              <div className="space-y-6">
+                 <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Name</label>
+                    <input value={editingEmployee.name} onChange={e => setEditingEmployee({...editingEmployee, name: e.target.value})} className="w-full p-4 bg-slate-50 rounded-xl border border-slate-100 outline-none focus:ring-2 focus:ring-hs-blue/20" placeholder="Name..." />
+                 </div>
+                 <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Rolle</label>
+                    <input value={editingEmployee.role} onChange={e => setEditingEmployee({...editingEmployee, role: e.target.value})} className="w-full p-4 bg-slate-50 rounded-xl border border-slate-100 outline-none focus:ring-2 focus:ring-hs-blue/20" placeholder="Rolle..." />
+                 </div>
+                 <div className="grid grid-cols-2 gap-8">
+                    <div>
+                       <div className="flex justify-between text-[10px] font-black uppercase text-slate-400 mb-1"><span>Performance</span><span>{editingEmployee.performance}%</span></div>
+                       <input type="range" min="0" max="100" value={editingEmployee.performance} onChange={e => setEditingEmployee({...editingEmployee, performance: parseInt(e.target.value)})} className="w-full accent-hs-blue" />
+                    </div>
+                    <div>
+                       <div className="flex justify-between text-[10px] font-black uppercase text-slate-400 mb-1"><span>Motivation</span><span>{editingEmployee.motivation}%</span></div>
+                       <input type="range" min="0" max="100" value={editingEmployee.motivation} onChange={e => setEditingEmployee({...editingEmployee, motivation: parseInt(e.target.value)})} className="w-full accent-hs-orange" />
+                    </div>
+                 </div>
+                 <div className="flex justify-end space-x-3 pt-6">
+                    <button onClick={() => setEditingEmployee(null)} className="px-6 py-3 rounded-xl font-bold uppercase text-xs text-slate-400">Abbrechen</button>
+                    <button onClick={handleSaveEmployee} className="px-10 py-3 bg-hs-blue text-white rounded-xl font-black uppercase text-xs shadow-lg hover:bg-hs-orange transition-all">Speichern</button>
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderChallengeSketch = () => (
+    <div className="max-w-4xl mx-auto py-12 animate-fade-in px-4">
+      <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-slate-100">
+        <div className="flex justify-between items-start mb-2">
+           <div className="flex items-center space-x-3">
+              <HelpCircle className="text-hs-orange" />
+              <h2 className="text-3xl font-black text-hs-blue uppercase">Führungsherausforderungen</h2>
+           </div>
+           <button 
+             onClick={handleSaveProfile}
+             disabled={saveStatus !== 'idle'}
+             className={`flex items-center space-x-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${saveStatus === 'saved' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400 hover:text-hs-blue'}`}
+           >
+              {saveStatus === 'saving' ? <Loader2 size={12} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={12} /> : <Save size={12} />}
+              <span>Profil speichern</span>
+           </button>
+        </div>
+        <p className="text-slate-500 mb-10 uppercase text-[10px] font-black tracking-widest">Schritt 2: Aktuelle Situation skizzieren</p>
+        
+        <div className="space-y-6 mb-10">
+          <p className="text-slate-600 leading-relaxed font-medium">
+            Beschreiben Sie kurz Ihre aktuell größten Herausforderungen. Geht es um Team-Dynamiken, strukturelle Engpässe oder Ihre eigene Führungsrolle?
+          </p>
+          <textarea 
+            value={leaderContext.challengeSketch}
+            onChange={e => setLeaderContext({...leaderContext, challengeSketch: e.target.value})}
+            className="w-full h-64 p-8 bg-slate-50 border-2 border-slate-100 rounded-[2.5rem] outline-none focus:border-hs-orange transition-all text-lg shadow-inner resize-none"
+            placeholder="z.B. Das Team ist fachlich exzellent, aber es herrscht Silo-Denken. Ich fühle mich oft im Mikromanagement gefangen und habe zu wenig Zeit für Strategie..."
+          />
+        </div>
+
+        <div className="flex gap-4">
+          <button 
+            onClick={() => setStep('CONTEXT')}
+            className="flex-1 py-5 border-2 border-slate-100 text-slate-400 rounded-3xl font-black uppercase tracking-widest hover:bg-slate-50 transition-all"
+          >
+            Zurück
+          </button>
+          <button 
+            onClick={generateSystemicQuestions}
+            disabled={leaderContext.challengeSketch.length < 20}
+            className="flex-[2] py-5 bg-hs-blue text-white rounded-3xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-xl disabled:opacity-30 flex items-center justify-center group"
+          >
+            Systemische Reflexion <Sparkles size={20} className="ml-3 group-hover:scale-110 transition-transform" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderReflection = () => (
+    <div className="max-w-4xl mx-auto py-12 animate-fade-in px-4">
+      <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-slate-100">
+        <div className="flex justify-between items-start mb-2">
+          <h2 className="text-3xl font-black text-hs-blue uppercase flex items-center">
+            <Brain className="mr-3 text-hs-accent" /> Systemische Reflexion
+          </h2>
+          <button 
+            onClick={handleSaveProfile}
+            disabled={saveStatus !== 'idle'}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${saveStatus === 'saved' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400 hover:text-hs-blue'}`}
+          >
+            {saveStatus === 'saving' ? <Loader2 size={12} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={12} /> : <Save size={12} />}
+            <span>Profil speichern</span>
+          </button>
+        </div>
+        <p className="text-slate-500 mb-10 uppercase text-[10px] font-black tracking-widest">Schritt 3: Den Kern freilegen</p>
+        
+        {loadingQuestions ? (
+          <div className="py-20 text-center">
+            <Loader2 size={48} className="animate-spin mx-auto text-hs-blue mb-6" />
+            <p className="font-black text-hs-blue uppercase animate-pulse">KI generiert Coaching-Fragen...</p>
+          </div>
+        ) : (
+          <div className="space-y-12">
+            {systemicQuestions.map((q, idx) => (
+              <div key={idx} className="space-y-4 animate-fade-in" style={{ animationDelay: `${idx * 200}ms` }}>
+                <div className="flex items-start space-x-4">
+                  <div className="w-8 h-8 rounded-full bg-hs-accent text-white flex items-center justify-center font-black shrink-0 mt-1">{idx + 1}</div>
+                  <h3 className="text-xl font-bold text-hs-blue leading-tight">{q}</h3>
+                </div>
+                <textarea 
+                  value={reflectionAnswers[idx]}
+                  onChange={e => {
+                    const newAnswers = [...reflectionAnswers];
+                    newAnswers[idx] = e.target.value;
+                    setReflectionAnswers(newAnswers);
+                  }}
+                  className="w-full p-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-accent transition-all text-sm italic"
+                  placeholder="Ihre Gedanken dazu..."
+                />
+              </div>
+            ))}
+            
             <button 
-              onClick={handleStartAnalysis}
-              disabled={loadingAnalysis}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold transition-all backdrop-blur-sm border border-white/20"
+              onClick={() => setStep('DECISION')}
+              className="w-full py-5 bg-hs-blue text-white rounded-3xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-xl flex items-center justify-center group"
             >
-              {loadingAnalysis ? 'Analysiere...' : aiAnalysis ? 'Neu analysieren' : 'Audit Starten'}
+              Zur Entscheidung gelangen <ArrowDownCircle size={20} className="ml-3 group-hover:translate-y-1 transition-transform" />
             </button>
           </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderDecision = () => (
+    <div className="max-w-4xl mx-auto py-12 animate-fade-in px-4">
+      <div className="bg-white p-12 rounded-[4rem] shadow-2xl border-t-[16px] border-hs-orange relative">
+        <div className="flex justify-between items-start mb-2">
+          <h2 className="text-4xl font-black text-hs-blue uppercase">Die Entscheidung</h2>
+          <button 
+            onClick={handleSaveProfile}
+            disabled={saveStatus !== 'idle'}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${saveStatus === 'saved' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400 hover:text-hs-blue'}`}
+          >
+            {saveStatus === 'saving' ? <Loader2 size={12} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={12} /> : <Save size={12} />}
+            <span>Profil speichern</span>
+          </button>
+        </div>
+        <p className="text-slate-500 mb-10 uppercase text-[10px] font-black tracking-widest">Schritt 4: Was will ich verändern?</p>
+        
+        <div className="space-y-8 mb-12">
+           <p className="text-lg text-slate-600 font-bold italic border-l-4 border-hs-accent pl-6 py-2 bg-slate-50 rounded-r-2xl">
+             "Nach dieser Reflexion ist mir klargeworden, dass die wichtigste Veränderung folgende ist..."
+           </p>
+           <textarea 
+             value={leaderContext.finalDecision}
+             onChange={e => setLeaderContext({...leaderContext, finalDecision: e.target.value})}
+             className="w-full h-40 p-8 bg-white border-4 border-slate-100 rounded-[2.5rem] outline-none focus:border-hs-orange transition-all text-xl font-black text-hs-blue shadow-lg"
+             placeholder="Formulieren Sie Ihr Veränderungsziel..."
+           />
+        </div>
+
+        <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 text-center">Alternative Wege zur Umsetzung</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+           <button 
+             onClick={() => generateDetailedAnalysis('Struktur')}
+             className="p-6 rounded-3xl border-2 transition-all text-center group border-transparent bg-slate-50 hover:border-hs-blue hover:bg-white"
+           >
+              <LayoutDashboard size={32} className="mx-auto mb-4 text-hs-blue group-hover:scale-110 transition-transform" />
+              <p className="text-[10px] font-black uppercase mb-1">Struktur</p>
+              <p className="text-xs font-bold text-slate-500">Optimierung der Rollen & Dashboards</p>
+           </button>
+           <button 
+             onClick={() => generateDetailedAnalysis('Kultur')}
+             className="p-6 rounded-3xl border-2 transition-all text-center group border-transparent bg-slate-50 hover:border-hs-orange hover:bg-white"
+           >
+              <Users size={32} className="mx-auto mb-4 text-hs-orange group-hover:scale-110 transition-transform" />
+              <p className="text-[10px] font-black uppercase mb-1">Kultur</p>
+              <p className="text-xs font-bold text-slate-500">Dialog-Formate & Team-Spirit</p>
+           </button>
+           <button 
+             onClick={() => generateDetailedAnalysis('Kompetenz')}
+             className="p-6 rounded-3xl border-2 transition-all text-center group border-transparent bg-slate-50 hover:border-hs-accent hover:bg-white"
+           >
+              <Zap size={32} className="mx-auto mb-4 text-hs-accent group-hover:scale-110 transition-transform" />
+              <p className="text-[10px] font-black uppercase mb-1">Kompetenz</p>
+              <p className="text-xs font-bold text-slate-500">Training der Führungsinstrumente</p>
+           </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAnalysis = () => {
+    if (!user) {
+      return (
+        <div className="max-w-2xl mx-auto py-12 animate-fade-in">
+           <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-slate-100 text-center mb-10">
+              <ShieldCheck size={48} className="mx-auto text-hs-blue mb-4" />
+              <h2 className="text-2xl font-black text-hs-blue uppercase mb-4">Analyse fast bereit</h2>
+              <p className="text-slate-500 mb-0">Um Ihre individuelle KI-Führungsanalyse anzuzeigen und im Vault zu sichern, melden Sie sich bitte an.</p>
+           </div>
+           <Auth inline={true} onAuthSuccess={() => setStep('ANALYSIS')} />
+        </div>
+      );
+    }
+
+    if (loadingAnalysis) {
+      return (
+        <div className="max-w-4xl mx-auto py-32 text-center">
+           <Loader2 size={64} className="animate-spin mx-auto text-hs-blue mb-8" />
+           <h2 className="text-3xl font-black text-hs-blue uppercase animate-pulse">KI schmiedet Ihren Strategie-Bericht...</h2>
+        </div>
+      );
+    }
+
+    if (!detailedAnalysis) return null;
+
+    return (
+      <div className="max-w-6xl mx-auto py-12 animate-fade-in space-y-12 px-4">
+         <div className="bg-hs-blue text-white p-12 rounded-[4rem] shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-12 opacity-10"><FileSearch size={240} /></div>
+            <div className="relative z-10">
+               <div className="flex justify-between items-start mb-8">
+                  <div className="bg-hs-orange px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest w-fit">Executive Summary</div>
+                  <button 
+                    onClick={handleSaveProfile}
+                    disabled={saveStatus !== 'idle'}
+                    className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all ${saveStatus === 'saved' ? 'bg-emerald-500 text-white' : 'bg-white/10 hover:bg-white/20'}`}
+                  >
+                    {saveStatus === 'saving' ? <Loader2 size={14} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={14} /> : <Save size={14} />}
+                    <span>{saveStatus === 'saved' ? 'Bericht gesichert' : 'Strategie speichern'}</span>
+                  </button>
+               </div>
+               <h1 className="text-5xl font-black uppercase tracking-tight mb-8 leading-none">Führungs-Analyse: {leaderContext.chosenPath}</h1>
+               <p className="text-2xl text-slate-300 font-bold max-w-4xl leading-relaxed italic">"{detailedAnalysis.management_summary}"</p>
+            </div>
+         </div>
+
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div className="bg-white p-10 rounded-[3rem] shadow-xl border-l-8 border-hs-accent">
+               <h3 className="text-xl font-black text-hs-blue uppercase mb-6 flex items-center"><Target className="mr-3 text-hs-accent" /> Strategische Hebel</h3>
+               <ul className="space-y-4">
+                  {detailedAnalysis.strategic_levers.map((l: string, i: number) => (
+                    <li key={i} className="flex items-start text-slate-700 font-bold bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                       <CheckCircle size={18} className="text-emerald-500 mr-3 mt-1 flex-shrink-0" /> {l}
+                    </li>
+                  ))}
+               </ul>
+            </div>
+            <div className="bg-white p-10 rounded-[3rem] shadow-xl border-l-8 border-hs-orange">
+               <h3 className="text-xl font-black text-hs-blue uppercase mb-6 flex items-center"><AlertCircle className="mr-3 text-hs-orange" /> Kulturelle Risiken</h3>
+               <ul className="space-y-4">
+                  {detailedAnalysis.cultural_risks.map((r: string, i: number) => (
+                    <li key={i} className="flex items-start text-slate-700 font-bold bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                       <AlertCircle size={18} className="text-hs-orange mr-3 mt-1 flex-shrink-0" /> {r}
+                    </li>
+                  ))}
+               </ul>
+            </div>
+         </div>
+
+         <div className="bg-slate-900 text-white p-12 rounded-[4rem] shadow-2xl relative overflow-hidden">
+            <div className="absolute -bottom-10 -left-10 text-white/5"><TrendingUp size={240} /></div>
+            <h3 className="text-2xl font-black uppercase mb-8 tracking-widest text-hs-accent">Impact Prognose</h3>
+            <p className="text-xl leading-relaxed text-slate-300 font-medium">{detailedAnalysis.impact_analysis}</p>
+            
+            <div className="mt-12 pt-10 border-t border-white/10">
+               <h4 className="text-sm font-black uppercase tracking-widest mb-6">Empfohlene nächste Schritte</h4>
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {detailedAnalysis.next_steps.map((s: string, i: number) => (
+                    <div key={i} className="bg-white/5 p-6 rounded-3xl border border-white/10">
+                       <span className="text-hs-orange font-black text-2xl mb-2 block">{i + 1}</span>
+                       <p className="text-sm font-bold">{s}</p>
+                    </div>
+                  ))}
+               </div>
+            </div>
+         </div>
+
+         <button 
+           onClick={() => setStep('DASHBOARD')}
+           className="w-full bg-hs-blue text-white py-6 rounded-[2.5rem] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-hs-orange transition-all flex items-center justify-center group"
+         >
+            Zum operativen Führungs-Dashboard <ArrowRight className="ml-4 group-hover:translate-x-2 transition-transform" />
+         </button>
+      </div>
+    );
+  };
+
+  const renderTeamEditor = () => {
+    if (!isEditingTeam) return null;
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4 animate-fade-in overflow-y-auto">
+        <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl p-10 relative">
+          <button onClick={() => setIsEditingTeam(false)} className="absolute top-8 right-8 p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={24}/></button>
+          <h2 className="text-3xl font-black text-hs-blue uppercase mb-2 flex items-center"><Settings className="mr-3 text-hs-orange" /> Team-Zusammensetzung</h2>
+          <p className="text-slate-400 uppercase text-[10px] font-black tracking-widest mb-10">Mitarbeiterprofile pflegen und aufstellen</p>
+
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {employees.map(e => (
+                <div key={e.id} className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex items-center justify-between group">
+                  <div>
+                    <p className="font-bold text-hs-blue">{e.name}</p>
+                    <p className="text-[10px] text-slate-400 uppercase font-black">{e.role}</p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button onClick={() => setEditingEmployee(e)} className="p-2 text-hs-blue hover:bg-white rounded-lg transition-colors"><Edit size={16}/></button>
+                    <button onClick={() => handleDeleteEmployee(e.id)} className="p-2 text-red-400 hover:bg-white rounded-lg transition-colors"><Trash2 size={16}/></button>
+                  </div>
+                </div>
+              ))}
+              <button 
+                onClick={() => setEditingEmployee({ name: '', role: '', performance: 70, motivation: 70, workload: 50, department: leaderContext.company || 'Team', hbdiQuadrant: 'A', observations: { positive: [], critical: [] } })}
+                className="p-6 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400 hover:border-hs-blue hover:text-hs-blue transition-all group"
+              >
+                <UserPlus size={24} className="mb-2 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Hinzufügen</span>
+              </button>
+            </div>
+          </div>
           
-          <div className="p-8">
-            {aiAnalysis ? (
-               <div className="prose prose-slate max-w-none">
-                 {renderMarkdown(aiAnalysis)}
-               </div>
-            ) : (
-               <div className="text-center py-8 text-slate-500">
-                 <Target size={48} className="mx-auto mb-4 text-slate-200" />
-                 <p>Klicken Sie auf "Audit Starten", um die Team-Situation zu bewerten und Muster zu erkennen.</p>
-               </div>
-            )}
+          {editingEmployee && (
+             <div className="mt-10 pt-10 border-t border-slate-100 animate-fade-in">
+                <h3 className="font-black text-hs-blue uppercase text-sm mb-6">{editingEmployee.id ? 'Profil bearbeiten' : 'Neues Profil anlegen'}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                  <div className="space-y-4">
+                    <input value={editingEmployee.name} onChange={e => setEditingEmployee({...editingEmployee, name: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="Name..." />
+                    <input value={editingEmployee.role} onChange={e => setEditingEmployee({...editingEmployee, role: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="Rolle..." />
+                    <select value={editingEmployee.hbdiQuadrant} onChange={e => setEditingEmployee({...editingEmployee, hbdiQuadrant: e.target.value as any})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                      <option value="A">HBDI Quadrant A (Rational)</option>
+                      <option value="B">HBDI Quadrant B (Organisatorisch)</option>
+                      <option value="C">HBDI Quadrant C (Emotional)</option>
+                      <option value="D">HBDI Quadrant D (Konzeptionell)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-6">
+                    <div>
+                      <div className="flex justify-between text-[10px] font-black uppercase text-slate-400 mb-1"><span>Performance</span><span>{editingEmployee.performance}%</span></div>
+                      <input type="range" min="0" max="100" value={editingEmployee.performance} onChange={e => setEditingEmployee({...editingEmployee, performance: parseInt(e.target.value)})} className="w-full accent-hs-blue" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-[10px] font-black uppercase text-slate-400 mb-1"><span>Motivation</span><span>{editingEmployee.motivation}%</span></div>
+                      <input type="range" min="0" max="100" value={editingEmployee.motivation} onChange={e => setEditingEmployee({...editingEmployee, motivation: parseInt(e.target.value)})} className="w-full accent-hs-orange" />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-3">
+                   <button onClick={() => setEditingEmployee(null)} className="px-6 py-3 rounded-xl font-bold uppercase text-xs text-slate-400">Abbrechen</button>
+                   <button onClick={handleSaveEmployee} className="px-10 py-3 bg-hs-blue text-white rounded-xl font-black uppercase text-xs shadow-lg hover:bg-hs-orange transition-all">Speichern</button>
+                </div>
+             </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderDashboard = () => (
+    <div className="space-y-10 animate-fade-in">
+       <div className="bg-hs-blue text-white p-10 rounded-[3rem] shadow-2xl relative overflow-hidden">
+          <div className="relative z-10">
+             <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <Zap className="text-hs-orange" size={24} />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-hs-accent">Individuelles Führungs-Profil</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <button 
+                    onClick={handleSaveProfile}
+                    disabled={saveStatus !== 'idle'}
+                    className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all flex items-center border ${saveStatus === 'saved' ? 'bg-emerald-50 border-emerald-500' : 'bg-white/10 hover:bg-white/20 border-white/10'}`}
+                  >
+                     {saveStatus === 'saving' ? <Loader2 size={12} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={12} /> : <Save size={12} />}
+                     <span className="ml-2">{saveStatus === 'saved' ? 'Gespeichert' : 'Vault Sicherung'}</span>
+                  </button>
+                  <button 
+                    onClick={() => setIsEditingTeam(true)}
+                    className="bg-white/10 hover:bg-white/20 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all flex items-center border border-white/10"
+                  >
+                    <Settings size={14} className="mr-2" /> Team aufstellen
+                  </button>
+                </div>
+             </div>
+             <h2 className="text-3xl font-black uppercase mb-2 tracking-tight">{leaderContext.company || TEAM_SCENARIO.title}</h2>
+             <p className="text-sm font-bold text-hs-accent uppercase tracking-widest mb-4">{leaderContext.position} • Pfad: {leaderContext.chosenPath || 'Standard'}</p>
+             <p className="text-lg text-slate-300 max-w-4xl leading-relaxed italic">"{leaderContext.finalDecision || leaderContext.challengeSketch || TEAM_SCENARIO.description}"</p>
+             <div className="mt-8 flex items-center space-x-8">
+                <div>
+                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Strategischer Fokus</p>
+                   <p className="text-sm font-bold text-white">Transformation & Wirksamkeit</p>
+                </div>
+                <div className="h-10 w-[1px] bg-white/10" />
+                <div>
+                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Team-Audit</p>
+                   <p className="text-sm font-bold text-white">{employees.length} Profile analysiert</p>
+                </div>
+             </div>
+          </div>
+          <Users className="absolute -bottom-10 -right-10 text-white/5" size={240} />
+       </div>
+
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 flex flex-col items-center">
+             <h3 className="text-xl font-black text-hs-blue uppercase mb-8 flex items-center self-start">
+                <LayoutDashboard className="mr-3 text-hs-orange" /> Team Dynamik Radar
+             </h3>
+             <div className="w-full h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                   <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                      <PolarGrid stroke="#f1f5f9" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 10, fontWeight: 800 }} />
+                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                      <Radar
+                        name="Team Average"
+                        dataKey="A"
+                        stroke="#1a2b4b"
+                        fill="#1a2b4b"
+                        fillOpacity={0.1}
+                      />
+                   </RadarChart>
+                </ResponsiveContainer>
+             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div className="bg-white p-8 rounded-[2.5rem] shadow-md border-l-8 border-emerald-500 flex flex-col justify-between">
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Performance Avg</p>
+                <p className="text-5xl font-black text-hs-blue">{Math.round(radarData[0].A)}%</p>
+                <div className="flex items-center text-emerald-600 text-xs font-bold mt-2">
+                   <TrendingUp size={14} className="mr-1" /> Aktiv gesteuert
+                </div>
+             </div>
+             <div className="bg-white p-8 rounded-[2.5rem] shadow-md border-l-8 border-hs-orange flex flex-col justify-between">
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Motivation Avg</p>
+                <p className="text-5xl font-black text-hs-blue">{Math.round(radarData[1].A)}%</p>
+                <div className="flex items-center text-hs-orange text-xs font-bold mt-2">
+                   <Activity size={14} className="mr-1" /> Stabilisierend
+                </div>
+             </div>
+             <div className="col-span-full bg-slate-50 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col space-y-4">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Verfügbare Instrumente</h4>
+                <div className="grid grid-cols-2 gap-3">
+                   {Object.values(INSTRUMENT_TEMPLATES).map((inst, i) => (
+                      <div key={i} className="flex items-center space-x-3 p-3 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                         <inst.icon size={16} className="text-hs-accent" />
+                         <span className="text-[10px] font-bold text-hs-blue uppercase">{inst.title}</span>
+                      </div>
+                   ))}
+                </div>
+             </div>
           </div>
        </div>
     </div>
   );
 
   const renderMatrix = () => (
-    <div className="animate-fade-in space-y-6">
-       <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-          <div className="flex justify-between items-end mb-6">
-            <div>
-              <h3 className="text-xl font-bold text-hs-blue">Leistungs-Motivation-Matrix</h3>
-              <p className="text-slate-500">Identifikation von Supportern, Distraktoren und Potenzialträgern.</p>
-            </div>
-          </div>
-          
-          <div className="h-[500px] w-full bg-slate-50 rounded-xl p-4 relative">
-             <div className="absolute top-4 left-4 text-emerald-700/30 font-bold uppercase text-sm">Stars / Supporter</div>
-             <div className="absolute top-4 right-4 text-blue-700/30 font-bold uppercase text-sm">Hohes Potenzial</div>
-             <div className="absolute bottom-4 left-4 text-amber-700/30 font-bold uppercase text-sm">Workhorses</div>
-             <div className="absolute bottom-4 right-4 text-red-700/30 font-bold uppercase text-sm">Risiko / Distraktoren</div>
-
-             <ResponsiveContainer width="100%" height="100%">
-               <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                 <CartesianGrid />
-                 <XAxis type="number" dataKey="performance" name="Leistung" unit="%" domain={[0, 100]} label={{ value: 'Leistung', position: 'insideBottomRight', offset: -10 }} />
-                 <YAxis type="number" dataKey="motivation" name="Motivation" unit="%" domain={[0, 100]} label={{ value: 'Motivation', angle: -90, position: 'insideLeft' }} />
-                 <ZAxis type="number" dataKey="workload" range={[60, 400]} name="Workload" />
-                 <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-                 <ReferenceLine x={50} stroke="#cbd5e1" strokeDasharray="3 3" />
-                 <ReferenceLine y={50} stroke="#cbd5e1" strokeDasharray="3 3" />
-                 <Scatter name="Mitarbeiter" data={MOCK_DATA} fill="#0ea5e9">
-                    {MOCK_DATA.map((entry, index) => {
-                      let color = '#94a3b8'; // default
-                      if (entry.performance > 60 && entry.motivation > 60) color = '#10b981'; // Star (Green)
-                      else if (entry.performance < 50 && entry.motivation < 50) color = '#ef4444'; // Risk (Red)
-                      else if (entry.performance > 60 && entry.motivation < 50) color = '#f59e0b'; // Boreout/Distractor (Orange)
-                      else if (entry.performance < 50 && entry.motivation > 60) color = '#3b82f6'; // Potential (Blue)
-                      return <Cell key={`cell-${index}`} fill={color} />;
-                    })}
-                 </Scatter>
-               </ScatterChart>
-             </ResponsiveContainer>
-          </div>
-          
-          <div className="grid grid-cols-4 gap-4 mt-6">
-             <div className="flex items-center text-sm text-slate-600"><div className="w-3 h-3 rounded-full bg-emerald-500 mr-2"></div> Leistungsträger (Supporter)</div>
-             <div className="flex items-center text-sm text-slate-600"><div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div> Potenzialträger</div>
-             <div className="flex items-center text-sm text-slate-600"><div className="w-3 h-3 rounded-full bg-amber-500 mr-2"></div> Kritische Haltung</div>
-             <div className="flex items-center text-sm text-slate-600"><div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div> Akutes Handlungsrisiko</div>
-          </div>
+    <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 animate-fade-in">
+       <h3 className="text-xl font-black text-hs-blue uppercase mb-8 flex items-center">
+          <BarChart3 className="mr-3 text-hs-accent" /> Performance-Motivation Matrix
+       </h3>
+       <div className="w-full h-[500px] relative">
+          <ResponsiveContainer width="100%" height="100%">
+             <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                <XAxis type="number" dataKey="performance" name="Performance" unit="%" domain={[0, 100]} hide />
+                <YAxis type="number" dataKey="motivation" name="Motivation" unit="%" domain={[0, 100]} hide />
+                <ZAxis type="category" dataKey="name" name="Name" />
+                <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                <ReferenceLine x={50} stroke="#f1f5f9" strokeWidth={2} />
+                <ReferenceLine y={50} stroke="#f1f5f9" strokeWidth={2} />
+                <Scatter name="Employees" data={employees}>
+                   {employees.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.performance > 50 && entry.motivation > 50 ? '#10b981' : entry.performance > 50 ? '#3b82f6' : '#f97316'} />
+                   ))}
+                </Scatter>
+             </ScatterChart>
+          </ResponsiveContainer>
+          <div className="absolute top-0 left-0 text-[10px] font-black uppercase text-slate-300">Hohe Motivation</div>
+          <div className="absolute bottom-0 left-0 text-[10px] font-black uppercase text-slate-300">Niedrige Motivation</div>
+          <div className="absolute bottom-0 right-0 text-[10px] font-black uppercase text-slate-300">Hohe Leistung</div>
+          <div className="absolute bottom-0 left-0 text-[10px] font-black uppercase text-slate-300 transform rotate-90 origin-bottom-left ml-4">Motivation Axis</div>
        </div>
     </div>
   );
 
   const renderProfiles = () => (
-    <div className="animate-fade-in grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-200px)]">
-       {/* Left: List */}
-       <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col h-full shadow-sm">
-          <div className="p-4 border-b border-slate-100 bg-slate-50">
-            <h3 className="font-bold text-hs-blue">Mitarbeiter-Profile</h3>
-            <p className="text-xs text-slate-500">Wählen Sie ein Profil für Details</p>
+    <div className="space-y-6 animate-fade-in">
+       <div className="relative mb-10 flex space-x-4">
+          <div className="relative flex-grow">
+            <Search className="absolute left-6 top-5 text-slate-400" size={20} />
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Mitarbeiter oder Abteilung suchen..."
+              className="w-full p-5 pl-16 bg-white rounded-3xl border border-slate-100 shadow-sm outline-none focus:border-hs-blue transition-all"
+            />
           </div>
-          <div className="overflow-y-auto flex-1 p-2 space-y-2">
-            {MOCK_DATA.map(emp => (
-              <button
-                key={emp.id}
-                onClick={() => {
-                  setSelectedEmployee(emp);
-                  setCoachingGuide(null);
-                }}
-                className={`w-full text-left p-3 rounded-xl transition-all flex items-center justify-between group ${
-                  selectedEmployee?.id === emp.id 
-                    ? 'bg-hs-blue text-white shadow-md' 
-                    : 'hover:bg-slate-50 text-slate-700'
-                }`}
-              >
-                <div>
-                  <span className="font-bold block">{emp.name}</span>
-                  <span className={`text-xs ${selectedEmployee?.id === emp.id ? 'text-slate-300' : 'text-slate-500'}`}>{emp.role}</span>
+          <button onClick={() => setIsEditingTeam(true)} className="bg-hs-blue text-white px-8 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-hs-orange transition-all flex items-center">
+             <UserPlus size={18} className="mr-2" /> Team verwalten
+          </button>
+       </div>
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredEmployees.map(e => (
+             <div key={e.id} className="bg-white p-8 rounded-[2.5rem] shadow-md border border-slate-100 hover:shadow-xl transition-all group flex flex-col">
+                <div className="flex justify-between items-start mb-6">
+                   <div className="w-16 h-16 rounded-2xl bg-hs-blue/5 flex items-center justify-center text-hs-blue group-hover:bg-hs-blue group-hover:text-white transition-all">
+                      <UserCheck size={32} />
+                   </div>
+                   <div className="bg-slate-50 px-3 py-1 rounded-full text-[10px] font-black uppercase text-slate-400">{e.department}</div>
                 </div>
-                <div className={`text-xs font-mono px-2 py-1 rounded ${
-                  emp.performance > 80 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
-                }`}>
-                  {emp.performance}% Perf.
+                <h4 className="text-xl font-black text-hs-blue uppercase mb-1">{e.name}</h4>
+                <p className="text-xs font-bold text-hs-accent mb-6 uppercase tracking-widest">{e.role}</p>
+                
+                <div className="mb-6 space-y-2 flex-grow">
+                   <p className="text-[10px] font-black text-slate-300 uppercase mb-2">Beobachtungen (Manuell geflegt)</p>
+                   {e.observations?.positive && e.observations.positive.length > 0 ? e.observations.positive.slice(0, 1).map((o, idx) => (
+                      <div key={idx} className="flex items-center text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-1.5 rounded-lg border border-emerald-100/50">
+                         <CheckCircle size={10} className="mr-1.5 shrink-0" /> <span className="truncate">{o}</span>
+                      </div>
+                   )) : <div className="text-[9px] text-slate-400 italic">Noch keine positiven Beobachtungen</div>}
+                   {e.observations?.critical && e.observations.critical.length > 0 ? e.observations.critical.slice(0, 1).map((o, idx) => (
+                      <div key={idx} className="flex items-center text-[10px] text-hs-orange font-bold bg-orange-50 px-2 py-1.5 rounded-lg border border-orange-100/50">
+                         <AlertCircle size={10} className="mr-1.5 shrink-0" /> <span className="truncate">{o}</span>
+                      </div>
+                   )) : <div className="text-[9px] text-slate-400 italic">Noch keine kritischen Beobachtungen</div>}
                 </div>
-              </button>
-            ))}
+
+                <div className="space-y-4 mb-8">
+                   <div>
+                      <div className="flex justify-between text-[10px] font-black text-slate-400 mb-1"><span>Performance</span><span>{e.performance}%</span></div>
+                      <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                         <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${e.performance}%` }} />
+                      </div>
+                   </div>
+                   <div>
+                      <div className="flex justify-between text-[10px] font-black text-slate-400 mb-1"><span>Motivation</span><span>{e.motivation}%</span></div>
+                      <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                         <div className="bg-hs-orange h-full rounded-full" style={{ width: `${e.motivation}%` }} />
+                      </div>
+                   </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedEmployee(e)}
+                  className="w-full py-4 bg-hs-blue text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-md mt-auto"
+                >
+                  Führungs-Cockpit öffnen
+                </button>
+             </div>
+          ))}
+       </div>
+    </div>
+  );
+
+  const renderHBDI = () => (
+    <div className="bg-white p-12 rounded-[4rem] shadow-xl border border-slate-100 animate-fade-in">
+       <div className="text-center mb-12">
+          <h3 className="text-2xl font-black text-hs-blue uppercase mb-2">HBDI Denkkontext</h3>
+          <p className="text-slate-500">Systemische Verteilung der Denkpräferenzen im Team</p>
+       </div>
+       <div className="grid grid-cols-2 gap-1 i max-w-2xl mx-auto border-4 border-slate-100 rounded-3xl overflow-hidden shadow-inner p-2 bg-slate-50">
+          <div className="aspect-square bg-hs-blue/80 p-8 flex flex-col items-center justify-center text-white relative">
+             <span className="absolute top-4 left-4 font-black text-4xl opacity-20">A</span>
+             <p className="font-black text-xs uppercase mb-4 tracking-widest">Rational</p>
+             <div className="flex flex-wrap gap-2 justify-center">
+                {employees.filter(e => e.hbdiQuadrant === 'A').map(e => (
+                   <div key={e.id} className="w-10 h-10 rounded-full bg-white/20 border border-white/40 flex items-center justify-center text-[10px] font-bold" title={e.name}>{e.name.split(' ')[0][0]}</div>
+                ))}
+             </div>
+          </div>
+          <div className="aspect-square bg-emerald-500/80 p-8 flex flex-col items-center justify-center text-white relative">
+             <span className="absolute top-4 right-4 font-black text-4xl opacity-20">B</span>
+             <p className="font-black text-xs uppercase mb-4 tracking-widest">Organisatorisch</p>
+             <div className="flex flex-wrap gap-2 justify-center">
+                {employees.filter(e => e.hbdiQuadrant === 'B').map(e => (
+                   <div key={e.id} className="w-10 h-10 rounded-full bg-white/20 border border-white/40 flex items-center justify-center text-[10px] font-bold" title={e.name}>{e.name.split(' ')[0][0]}</div>
+                ))}
+             </div>
+          </div>
+          <div className="aspect-square bg-hs-orange/80 p-8 flex flex-col items-center justify-center text-white relative">
+             <span className="absolute bottom-4 left-4 font-black text-4xl opacity-20">C</span>
+             <p className="font-black text-xs uppercase mb-4 tracking-widest">Emotional</p>
+             <div className="flex flex-wrap gap-2 justify-center">
+                {employees.filter(e => e.hbdiQuadrant === 'C').map(e => (
+                   <div key={e.id} className="w-10 h-10 rounded-full bg-white/20 border border-white/40 flex items-center justify-center text-[10px] font-bold" title={e.name}>{e.name.split(' ')[0][0]}</div>
+                ))}
+             </div>
+          </div>
+          <div className="aspect-square bg-hs-accent/80 p-8 flex flex-col items-center justify-center text-white relative">
+             <span className="absolute bottom-4 right-4 font-black text-4xl opacity-20">D</span>
+             <p className="font-black text-xs uppercase mb-4 tracking-widest">Konzeptionell</p>
+             <div className="flex flex-wrap gap-2 justify-center">
+                {employees.filter(e => e.hbdiQuadrant === 'D').map(e => (
+                   <div key={e.id} className="w-10 h-10 rounded-full bg-white/20 border border-white/40 flex items-center justify-center text-[10px] font-bold" title={e.name}>{e.name.split(' ')[0][0]}</div>
+                ))}
+             </div>
           </div>
        </div>
+    </div>
+  );
 
-       {/* Right: Detail & AI Action */}
-       <div className="lg:col-span-8 flex flex-col h-full">
-         {selectedEmployee ? (
-           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-full overflow-hidden">
-             {/* Header */}
-             <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-slate-50/50">
-               <div className="flex items-center">
-                  <div className="w-12 h-12 bg-hs-accent/10 text-hs-accent rounded-full flex items-center justify-center font-bold text-xl mr-4">
-                    {selectedEmployee.name.charAt(0)}
+  const renderCockpit = () => {
+    if (!selectedEmployee) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-xl p-4 animate-fade-in overflow-y-auto">
+         <div className="bg-white w-full max-w-6xl rounded-[3rem] shadow-2xl relative flex flex-col lg:flex-row overflow-hidden max-h-[95vh]">
+            <div className="lg:w-1/4 bg-slate-50 p-8 border-r border-slate-100 flex flex-col">
+               <div className="flex justify-between items-start mb-8">
+                  <div className="w-16 h-16 bg-hs-blue text-white rounded-2xl flex items-center justify-center shadow-lg">
+                     <UserCheck size={32} />
+                  </div>
+                  <button onClick={() => { setSelectedEmployee(null); setActiveInstrument(null); }} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X size={24}/></button>
+               </div>
+               <h2 className="text-3xl font-black text-hs-blue uppercase leading-none mb-1">{selectedEmployee.name}</h2>
+               <p className="text-hs-accent font-black uppercase text-[10px] tracking-widest mb-10">{selectedEmployee.role} • {selectedEmployee.department}</p>
+               
+               <div className="space-y-8 flex-grow">
+                  <div>
+                     <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-4 flex items-center"><CheckCircle size={14} className="mr-2 text-emerald-500" /> Positive Auffälligkeiten</h3>
+                     <ul className="space-y-2">
+                        {selectedEmployee.observations?.positive.map((o, idx) => (
+                           <li key={idx} className="text-xs font-bold text-slate-700 bg-white p-4 rounded-xl border border-slate-100 shadow-sm leading-relaxed">{o}</li>
+                        ))}
+                     </ul>
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-hs-blue">{selectedEmployee.name}</h2>
-                    <p className="text-slate-500 flex items-center text-sm">
-                      <Briefcase size={14} className="mr-1"/> {selectedEmployee.role} &bull; {selectedEmployee.department}
-                    </p>
+                     <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-4 flex items-center"><AlertCircle size={14} className="mr-2 text-hs-orange" /> Kritische Auffälligkeiten</h3>
+                     <ul className="space-y-2">
+                        {selectedEmployee.observations?.critical.map((o, idx) => (
+                           <li key={idx} className="text-xs font-bold text-slate-700 bg-white p-4 rounded-xl border border-slate-100 shadow-sm leading-relaxed">{o}</li>
+                        ))}
+                     </ul>
                   </div>
                </div>
-               <button 
-                 onClick={() => handleGenerateCoaching(selectedEmployee)}
-                 disabled={loadingCoaching}
-                 className="flex items-center bg-hs-accent text-white px-4 py-2 rounded-lg hover:bg-sky-500 transition-colors shadow-lg shadow-sky-200"
-               >
-                 {loadingCoaching ? <Activity className="animate-spin mr-2" size={18}/> : <MessageSquare className="mr-2" size={18}/>}
-                 1:1 Gespräch planen
-               </button>
-             </div>
+            </div>
 
-             {/* Content Scrollable */}
-             <div className="flex-1 overflow-y-auto p-6">
-                <div className="grid grid-cols-3 gap-4 mb-8">
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-center">
-                    <span className="block text-slate-400 text-xs uppercase tracking-wider mb-1">Performance</span>
-                    <span className={`text-2xl font-bold ${selectedEmployee.performance > 80 ? 'text-emerald-600' : 'text-slate-700'}`}>
-                      {selectedEmployee.performance}%
-                    </span>
+            <div className="lg:w-3/4 p-10 flex flex-col overflow-y-auto">
+               <div className="flex justify-between items-center mb-8">
+                  <h3 className="text-xl font-black text-hs-blue uppercase">Führungswerkzeuge</h3>
+                  <div className="flex items-center space-x-2">
+                    <span className="bg-slate-100 px-4 py-1.5 rounded-full text-[9px] font-black uppercase text-slate-400 tracking-widest">Aktiviertes Tooling</span>
                   </div>
-                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-center">
-                    <span className="block text-slate-400 text-xs uppercase tracking-wider mb-1">Motivation</span>
-                    <span className={`text-2xl font-bold ${selectedEmployee.motivation < 50 ? 'text-red-500' : 'text-slate-700'}`}>
-                      {selectedEmployee.motivation}%
-                    </span>
-                  </div>
-                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-center">
-                    <span className="block text-slate-400 text-xs uppercase tracking-wider mb-1">Workload</span>
-                    <span className={`text-2xl font-bold ${selectedEmployee.workload > 85 ? 'text-amber-500' : 'text-slate-700'}`}>
-                      {selectedEmployee.workload}%
-                    </span>
-                  </div>
-                </div>
+               </div>
+               
+               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+                  {(Object.keys(INSTRUMENT_TEMPLATES) as Array<keyof typeof INSTRUMENT_TEMPLATES>).map(key => {
+                    const inst = INSTRUMENT_TEMPLATES[key];
+                    return (
+                      <button 
+                        key={key} 
+                        onClick={() => setActiveInstrument(key)}
+                        className={`p-5 rounded-3xl border-2 flex flex-col items-center text-center transition-all ${activeInstrument === key ? 'border-hs-blue bg-hs-blue/5 shadow-lg' : 'border-slate-50 hover:border-hs-accent hover:bg-slate-50'}`}
+                      >
+                         <inst.icon size={28} className={`mb-3 ${activeInstrument === key ? 'text-hs-blue' : 'text-slate-400'}`} />
+                         <span className="text-[9px] font-black uppercase tracking-tight leading-tight">{inst.title}</span>
+                      </button>
+                    );
+                  })}
+               </div>
 
-                {coachingGuide ? (
-                  <div className="animate-fade-in bg-indigo-50 rounded-xl border border-indigo-100 p-6">
-                     <h3 className="text-indigo-900 font-bold mb-4 flex items-center">
-                       <Sparkles className="mr-2 text-indigo-500" size={20}/> Coaching Leitfaden
-                     </h3>
-                     <div className="space-y-4">
-                       <div>
-                         <span className="text-xs font-bold text-indigo-400 uppercase">Fokus Thema</span>
-                         <p className="font-semibold text-indigo-900">{coachingGuide.focusArea}</p>
-                       </div>
-                       <div className="bg-white p-4 rounded-lg border border-indigo-100 shadow-sm">
-                         <span className="text-xs font-bold text-indigo-400 uppercase block mb-1">Einstiegsfrage</span>
-                         <p className="text-slate-700 italic">"{coachingGuide.openingQuestion}"</p>
-                       </div>
-                       <div>
-                         <span className="text-xs font-bold text-indigo-400 uppercase">Schlüsselpunkte</span>
-                         <ul className="list-disc ml-4 mt-1 space-y-1 text-sm text-indigo-900">
-                           {coachingGuide.keyPoints.map((kp, i) => <li key={i}>{kp}</li>)}
-                         </ul>
-                       </div>
-                       <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100 text-sm">
-                          <span className="text-xs font-bold text-emerald-600 uppercase block mb-1">Zielvereinbarung</span>
-                          {coachingGuide.actionPlan}
-                       </div>
+               {activeInstrument ? (
+                  <div className="animate-fade-in bg-slate-50 p-10 rounded-[3rem] border border-slate-100 flex-grow shadow-inner">
+                     <div className="flex items-center space-x-4 mb-10 border-b border-slate-200 pb-8">
+                        <div className="bg-hs-blue text-white p-4 rounded-2xl shadow-xl">
+                           {React.createElement(INSTRUMENT_TEMPLATES[activeInstrument].icon, { size: 32 })}
+                        </div>
+                        <div>
+                           <h4 className="text-2xl font-black text-hs-blue uppercase tracking-tight">{INSTRUMENT_TEMPLATES[activeInstrument].title}</h4>
+                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Leitfaden & Dokumentation</p>
+                        </div>
+                     </div>
+                     <div className="space-y-10">
+                        {INSTRUMENT_TEMPLATES[activeInstrument].sections.map((sec, i) => (
+                           <div key={i} className="animate-fade-in" style={{ animationDelay: `${i * 100}ms` }}>
+                              <div className="flex items-center space-x-3 mb-3">
+                                 <div className="w-6 h-6 rounded-full bg-hs-accent text-white flex items-center justify-center text-[10px] font-black">{i+1}</div>
+                                 <h5 className="font-black text-hs-blue uppercase text-xs tracking-widest">{sec.h}</h5>
+                              </div>
+                              <p className="text-xs font-bold text-slate-400 mb-4 ml-9">{sec.p}</p>
+                              <textarea 
+                                value={instrumentNotes[`${activeInstrument}-${selectedEmployee.id}-${i}`] || ''}
+                                onChange={e => setInstrumentNotes({...instrumentNotes, [`${activeInstrument}-${selectedEmployee.id}-${i}`]: e.target.value})}
+                                className="w-full h-32 bg-white border border-slate-100 rounded-[1.5rem] p-6 text-sm outline-none focus:border-hs-blue transition-all shadow-sm" 
+                                placeholder="Ergebnisse der Besprechung hier dokumentieren..." 
+                              />
+                           </div>
+                        ))}
+                        <button 
+                          onClick={() => { alert("Vorgang wurde im Intelligence Vault gesichert."); setSelectedEmployee(null); }}
+                          className="w-full py-5 bg-hs-orange text-white rounded-3xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl hover:bg-hs-blue transition-all flex items-center justify-center group"
+                        >
+                           <SaveAll size={20} className="mr-3 group-hover:scale-110 transition-transform" /> Gesprächsergebnisse finalisieren & Vault sichern
+                        </button>
                      </div>
                   </div>
-                ) : (
-                  <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-400">
-                    <p>Wählen Sie "1:1 Gespräch planen", um einen individuellen Leitfaden zu generieren.</p>
+               ) : (
+                  <div className="flex-grow flex flex-col items-center justify-center text-center p-16 border-4 border-dashed border-slate-50 rounded-[4rem] bg-slate-50/30">
+                     <Sparkles size={64} className="text-slate-100 mb-6" />
+                     <h4 className="text-lg font-black text-slate-300 uppercase mb-2">Instrument auswählen</h4>
+                     <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest max-w-[200px]">Nutzen Sie eines der Templates, um das Gespräch strukturiert vorzubereiten</p>
                   </div>
-                )}
-             </div>
-           </div>
-         ) : (
-           <div className="h-full flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-             <UserPlus size={48} className="mb-4 text-slate-300"/>
-             <p>Wählen Sie einen Mitarbeiter aus der Liste.</p>
-           </div>
-         )}
-       </div>
+               )}
+            </div>
+         </div>
+      </div>
+    );
+  };
+
+  if (step === 'LANDING') return (
+    <div className="pt-24 pb-20 min-h-screen bg-slate-50">
+       <button onClick={() => setView(ViewState.HOME)} className="max-w-6xl mx-auto mb-6 flex items-center text-slate-400 hover:text-hs-blue transition-colors font-black uppercase text-xs tracking-widest px-4">
+           <ChevronLeft size={16} className="mr-1" /> {t('nav.back_home')}
+       </button>
+       {renderLanding()}
     </div>
   );
 
   return (
     <div className="pt-24 pb-12 min-h-screen bg-slate-50 relative">
-      {/* ASSESSMENT MODAL OVERLAY */}
-      {showAssessment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-             <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
-               <div>
-                 <h2 className="text-xl font-bold text-hs-blue">Start-Assessment: Leadership</h2>
-                 <p className="text-sm text-slate-500">Ihre Einschätzung zur Situation</p>
-               </div>
-               <button onClick={() => setShowAssessment(false)} className="text-slate-400 hover:text-red-500">
-                 <X size={24} />
-               </button>
-             </div>
-             
-             <div className="p-6 space-y-6">
-                {assessmentQuestions.map((q, idx) => (
-                   <div key={q.id}>
-                     <label className="block text-sm font-bold text-slate-700 mb-2">{idx + 1}. {q.text}</label>
-                     <textarea
-                       value={assessmentAnswers[q.id] || ''}
-                       onChange={(e) => setAssessmentAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
-                       placeholder={q.placeholder}
-                       className="w-full h-20 rounded-lg border-slate-300 border p-3 text-sm focus:ring-2 focus:ring-hs-accent focus:border-transparent outline-none resize-none bg-slate-50"
-                     ></textarea>
-                   </div>
-                ))}
-             </div>
-
-             <div className="p-6 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end">
-                <button 
-                  onClick={handleAssessmentSubmit}
-                  className="bg-hs-blue text-white px-8 py-3 rounded-lg font-bold hover:bg-slate-800 transition-colors shadow-lg"
-                >
-                  Analyse starten
-                </button>
-             </div>
-           </div>
-        </div>
-      )}
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-hs-blue">Führungsradar</h1>
-            <p className="text-slate-500">Systemisches Management Dashboard & Mitarbeiterentwicklung</p>
-          </div>
-        </div>
+        
+        {/* Onboarding Flow Rendering */}
+        {step === 'CONTEXT' && renderContextForm()}
+        {step === 'CHALLENGE' && renderChallengeSketch()}
+        {step === 'REFLECTION' && renderReflection()}
+        {step === 'DECISION' && renderDecision()}
+        {step === 'ANALYSIS' && renderAnalysis()}
+        {step === 'TEAM_SKETCH' && renderTeamSketch()}
 
-        {/* Tab Navigation */}
-        <div className="flex space-x-1 bg-white p-1 rounded-xl shadow-sm border border-slate-200 w-fit mb-8">
-          <button 
-            onClick={() => setActiveTab('overview')}
-            className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'overview' ? 'bg-hs-blue text-white shadow' : 'text-slate-500 hover:bg-slate-50'}`}
-          >
-            <LayoutDashboard size={16} className="mr-2" /> Überblick
-          </button>
-          <button 
-            onClick={() => setActiveTab('matrix')}
-             className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'matrix' ? 'bg-hs-blue text-white shadow' : 'text-slate-500 hover:bg-slate-50'}`}
-          >
-            <Target size={16} className="mr-2" /> Supporter-Matrix
-          </button>
-          <button 
-            onClick={() => setActiveTab('profiles')}
-             className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'profiles' ? 'bg-hs-blue text-white shadow' : 'text-slate-500 hover:bg-slate-50'}`}
-          >
-            <UserPlus size={16} className="mr-2" /> Einzelprofile & Coaching
-          </button>
-        </div>
+        {step === 'DASHBOARD' && (
+          <>
+            <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-6">
+              <div>
+                 <button onClick={() => setStep('LANDING')} className="mb-4 flex items-center text-slate-400 hover:text-hs-blue transition-colors font-black uppercase text-[10px] tracking-widest">
+                    <ChevronLeft size={14} className="mr-1" /> Zurück zum Setup
+                 </button>
+                 <h1 className="text-4xl font-black text-hs-blue uppercase tracking-tight">{t('area.lead')}</h1>
+                 <p className="text-slate-500 font-medium">Interaktives Dashboard für wirksame Führungsinstrumente</p>
+              </div>
+              
+              <div className="bg-white/50 backdrop-blur-sm px-6 py-4 rounded-[2rem] border border-slate-200 flex items-center space-x-4">
+                 <Info className="text-hs-orange shrink-0" size={20} />
+                 <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Aktives Szenario</p>
+                    <p className="text-xs font-bold text-hs-blue mt-1 truncate max-w-[200px]">{leaderContext.company || TEAM_SCENARIO.title}</p>
+                 </div>
+              </div>
+            </div>
+            
+            <div className="flex flex-wrap gap-1 bg-white p-1 rounded-2xl shadow-sm border border-slate-200 mb-10 w-fit">
+               {(['overview', 'matrix', 'profiles', 'hbdi'] as TabId[]).map(tab => (
+                 <button 
+                   key={tab} 
+                   onClick={() => setActiveTab(tab)} 
+                   className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-hs-blue text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50 hover:text-hs-blue'}`}
+                 >
+                   {t(`radar.tab.${tab}`)}
+                 </button>
+               ))}
+            </div>
 
-        {/* Tab Content */}
-        <div>
-          {activeTab === 'overview' && renderOverview()}
-          {activeTab === 'matrix' && renderMatrix()}
-          {activeTab === 'profiles' && renderProfiles()}
-        </div>
+            <div className="min-h-[600px]">
+               {activeTab === 'overview' && renderDashboard()}
+               {activeTab === 'matrix' && renderMatrix()}
+               {activeTab === 'profiles' && renderProfiles()}
+               {activeTab === 'hbdi' && renderHBDI()}
+            </div>
+          </>
+        )}
 
+        {renderTeamEditor()}
+        {selectedEmployee && renderCockpit()}
       </div>
     </div>
   );

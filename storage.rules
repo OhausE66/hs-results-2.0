@@ -1,0 +1,45 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Hilfsfunktionen
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email in [
+        'olafheger@hs-results.com',
+        'heger@hs-results.com',
+        'olaf.heger@gmail.com',
+        'olafheger@arcor.de'
+      ];
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Homepage Bilder & Assets: Öffentlich lesbar, nur Admin schreibt
+    match /homepage_assets/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Berater Bilder & CVs: Öffentlich lesbar, nur Admin schreibt
+    match /consultants/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Publikationen PDFs: Öffentlich lesbar, nur Admin schreibt
+    match /publications/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Nutzer Uploads (Vault / Profile): Nur Besitzer oder Admin
+    match /user_uploads/{userId}/{allPaths=**} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+  }
+}

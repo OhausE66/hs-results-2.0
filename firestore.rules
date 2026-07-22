@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Hilfsfunktionen
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email in [
+        'olafheger@hs-results.com',
+        'heger@hs-results.com',
+        'olaf.heger@gmail.com',
+        'olafheger@arcor.de'
+      ];
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Berater-Profile: Öffentlich lesbar, nur Admin darf schreiben
+    match /consultants/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // PDF-Mappings: Öffentlich lesbar, nur Admin darf schreiben
+    match /publication_mappings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Nutzer-Daten (Vault, Projekte, Profile)
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+      
+      match /files/{fileId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      match /projects/{projectId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      match /orgContexts/{contextId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+  }
+}

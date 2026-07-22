@@ -1,472 +1,563 @@
 
+// @google/genai initialization and types correctly following guidelines
 import { GoogleGenAI, Type } from "@google/genai";
-import { ChangeToolId, AnalysisResult, Employee, CoachingGuide, AssessmentQuestion, AssessmentResponse } from "../types";
+import { 
+  ChangeToolId, 
+  AnalysisResult, 
+  Employee, 
+  CoachingGuide, 
+  AssessmentQuestion, 
+  AssessmentResponse 
+} from "../types";
 
+// Always use named parameter for apiKey
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-const modelName = "gemini-2.5-flash";
+// Select gemini-3-pro-preview for complex reasoning and organizational analysis tasks
+const modelName = "gemini-3-pro-preview";
 
-// --- Configuration & Prompts ---
+export interface VentureConcept {
+  id: string;
+  name: string;
+  tagline: string;
+  problem_solved: string;
+  reddit_trend_connection: string;
+  monetization_strategy: string;
+  exit_scenario_300k: string;
+  roadmap_6_months: string[];
+}
 
-export const getAssessmentQuestions = (toolId: ChangeToolId): AssessmentQuestion[] => {
-  switch (toolId) {
-    case 'plan_kotter':
-      return [
-        { id: 'q1', text: "Was ist der absolute Auslöser, der diesen Wandel jetzt unausweichlich macht?", placeholder: "z.B. Umsatzrückgang, neue Technologie, Marktveränderung..." },
-        { id: 'q2', text: "Wer sind die wichtigsten Schlüsselpersonen, die diesen Wandel vorantreiben könnten (Führungskoalition)?", placeholder: "Namen oder Rollen der Unterstützer..." },
-        { id: 'q3', text: "Was ist Ihre Vision? Wie sieht das Unternehmen aus, wenn alles perfekt läuft?", placeholder: "In 2 Jahren sind wir..." },
-        { id: 'q4', text: "Welche Hindernisse erwarten Sie (Strukturen, Kultur, Skills)?", placeholder: "Veraltete IT, Angst vor Jobverlust..." },
-        { id: 'q5', text: "Gibt es sichtbare 'Quick Wins', die wir schnell erreichen können?", placeholder: "Prozessvereinfachung, Pilotprojekt..." }
-      ];
-    case 'analysis_swot':
-      return [
-        { id: 'q1', text: "Was läuft intern bei Ihnen aktuell besser als bei jedem Konkurrenten (Stärken)?", placeholder: "Technologie, Teamgeist, Patent..." },
-        { id: 'q2', text: "Wo verlieren Sie aktuell am meisten Zeit oder Geld (Schwächen)?", placeholder: "Veraltete Prozesse, Fachkräftemangel..." },
-        { id: 'q3', text: "Welche Marktentwicklung könnten Sie nutzen, wenn Sie schnell wären (Chancen)?", placeholder: "Neuer Markt, Gesetzesänderung..." },
-        { id: 'q4', text: "Was macht Ihnen am Markt 'bauchschmerzen' (Risiken)?", placeholder: "Aggressive Wettbewerber, Preiskampf..." }
-      ];
-    case 'analysis_stakeholder':
-      return [
-        { id: 'q1', text: "Wer hat die Macht, das Projekt sofort zu stoppen?", placeholder: "Geschäftsführung, Betriebsrat..." },
-        { id: 'q2', text: "Welche Gruppen verlieren durch den Wandel an Einfluss oder Komfort?", placeholder: "Mittleres Management, Abteilung X..." },
-        { id: 'q3', text: "Wer profitiert am meisten von der Veränderung?", placeholder: "Kunden, Sales Team..." },
-        { id: 'q4', text: "Wie wird aktuell im Unternehmen kommuniziert (Flurfunk vs. Offiziell)?", placeholder: "Viel Flurfunk, wenig Transparenz..." }
-      ];
-    case 'model_adkar':
-      return [
-        { id: 'q1', text: "Verstehen die Mitarbeiter wirklich, WARUM der Wandel nötig ist (Awareness)?", placeholder: "Eher nein, viele denken es ist nur eine Laune..." },
-        { id: 'q2', text: "Wie hoch ist die Motivation mitzumachen (Desire)?", placeholder: "Gering, Veränderungsmüdigkeit..." },
-        { id: 'q3', text: "Fehlt es an Wissen oder Fähigkeiten (Knowledge)?", placeholder: "Neue Softwarekenntnisse fehlen..." },
-        { id: 'q4', text: "Können die Mitarbeiter das Neue im Alltag umsetzen (Ability)?", placeholder: "Zeit fehlt, Prozesse blockieren..." }
-      ];
-    case 'tool_culture_amp':
-      return [
-        { id: 'ca1', text: "Wie oft fragen Sie aktuell die Stimmung Ihrer Mitarbeiter ab (Puls)?", placeholder: "Jährlich, Monatlich, noch gar nicht..." },
-        { id: 'ca2', text: "In welchen Teams/Abteilungen vermuten Sie die höchste 'Fluchtgefahr' (Retention Risk)?", placeholder: "IT, Sales, High Potentials..." },
-        { id: 'ca3', text: "Gibt es Themen, bei denen Mitarbeiter sich nicht trauen, offen zu sprechen?", placeholder: "Kritik am Management, Fehlerkultur..." },
-        { id: 'ca4', text: "Welches konkrete Verhalten wollen Sie bei Führungskräften fördern?", placeholder: "Mehr Coaching, mehr Transparenz..." }
-      ];
-    case 'tool_qualtrics':
-      return [
-        { id: 'qx1', text: "Welche 'Moments that matter' sind im aktuellen Wandel kritisch?", placeholder: "Onboarding im neuen System, Erstes Training..." },
-        { id: 'qx2', text: "Über welche Kanäle erhalten Sie aktuell unstrukturiertes Feedback?", placeholder: "E-Mails, Support-Tickets, Flurfunk..." },
-        { id: 'qx3', text: "Wie erleben Mitarbeiter den bisherigen Veränderungsprozess (Sentiment)?", placeholder: "Skeptisch, Überfordert, Neugierig..." },
-        { id: 'qx4', text: "Wo bricht die 'Employee Journey' aktuell am häufigsten ab?", placeholder: "Nach dem Training, bei der ersten Anwendung..." }
-      ];
-    case 'tool_viva':
-      return [
-        { id: 'vx1', text: "Haben Sie das Gefühl, dass Teams in 'Silos' arbeiten?", placeholder: "Ja, Marketing redet nicht mit Sales..." },
-        { id: 'vx2', text: "Wie hoch ist die Meeting-Belastung in Schlüsselrollen?", placeholder: "Extrem hoch, kaum Fokuszeit..." },
-        { id: 'vx3', text: "Nutzen Mitarbeiter die neuen digitalen Tools bereits effizient?", placeholder: "Nein, alte Muster herrschen vor..." },
-        { id: 'vx4', text: "Gibt es Anzeichen für Burnout durch ständige Erreichbarkeit?", placeholder: "E-Mails am Wochenende sind normal..." }
-      ];
-    case 'story_creation':
-      return [
-        { id: 'st1', text: "Was ist der 'Drache' (die Bedrohung), wenn wir uns NICHT ändern?", placeholder: "Insolvenz, Verlust der Marktführerschaft, Veraltung..." },
-        { id: 'st2', text: "Was ist der 'Schatz' (die Prinzessin/Belohnung), wenn wir es schaffen?", placeholder: "Sichere Arbeitsplätze, Innovationsführer, Marktanteile..." },
-        { id: 'st3', text: "An wen richtet sich die Geschichte primär (Zielgruppe)?", placeholder: "Produktionsmitarbeiter, Mittleres Management, Investoren..." },
-        { id: 'st4', text: "Welchen Tonfall braucht die Organisation aktuell?", placeholder: "Ehrlich und schonungslos ODER Ermutigend und Visionär..." }
-      ];
-    default: // GAP & Risk & Fallback
-      return [
-        { id: 'q1', text: "Beschreiben Sie den aktuellen Ist-Zustand kurz und knapp.", placeholder: "Status Quo ist..." },
-        { id: 'q2', text: "Was ist das konkrete Zielbild?", placeholder: "Ziel ist..." },
-        { id: 'q3', text: "Was fehlt aktuell noch, um das Ziel zu erreichen?", placeholder: "Ressourcen, Know-how..." },
-        { id: 'q4', text: "Was passiert im schlimmsten Fall, wenn wir nichts tun?", placeholder: "Verlust von Marktanteilen..." }
-      ];
+export interface VentureDeepDive {
+  market_potential: string;
+  target_persona: string;
+  usp_details: string;
+  tech_stack: string[];
+  extended_roadmap: {
+    phase: string;
+    duration: string;
+    milestones: string[];
+  }[];
+  strategic_risks: {
+    risk: string;
+    mitigation: string;
+  }[];
+}
+
+export interface OrgAnalysisOutput {
+  executive_summary: string;
+  maturity_score: number;
+  strengths: string[];
+  weaknesses: string[];
+  optimization_proposals: {
+    short_term: string[];
+    long_term: string[];
+  };
+}
+
+export interface OrgQuestionState {
+  next_question?: { text: string; options: string[] };
+  final_result?: OrgAnalysisOutput;
+}
+
+export interface ReorgSimulatorOutput {
+  impact_analysis: { title: string; description: string };
+  diagnosis: { key_assumptions: string[] };
+  roadmap_30_60_90: {
+    day_30: string[];
+    day_60: string[];
+    day_90: string[];
+  };
+  risk_register: { risk: string; early_signals: string[]; mitigations: string[] }[];
+  communication_plan: {
+    talktracks: { audience: string; core_message: string; faq_samples: { q: string; a: string }[] }[];
+  };
+}
+
+export interface ReorgQuestionState {
+  next_question?: { text: string; options: string[] };
+  final_result?: ReorgSimulatorOutput;
+}
+
+export interface CultureHypothesis {
+  id: string;
+  text: string;
+  reasoning: string;
+}
+
+export interface CultureAnalysisResult {
+  profile: {
+    title: string;
+    summary: string;
+    shadow_culture_traits: string[];
+    strengths: string[];
+  };
+  levers: { area: string; impact: 'High' | 'Medium' | 'Low'; description: string }[];
+  interventions: { title: string; target: string; action: string }[];
+  experiment_plan_6_weeks: { week: string; focus: string; experiment: string; success_signal: string }[];
+}
+
+export interface StrategyOption {
+  id: string;
+  title: string;
+  description: string;
+  opportunity_space: string;
+}
+
+export interface StrategyPlanResult {
+  one_page_strategy: {
+    vision_statement: string;
+    target_audience: string;
+    unique_value_proposition: string;
+  };
+  implementation: {
+    decision_logic: string;
+    main_focus: string;
+    initiative_portfolio: { name: string; priority: 'High' | 'Medium' | 'Low'; impact: string }[];
+    kpi_framework: { kpi: string; target: string }[];
+  };
+  roadmap: { phase: string; timing: string; milestones: string[] }[];
+  risks: { risk: string; mitigation: string }[];
+}
+
+// Helper to safely parse AI responses
+const safeParse = (text: string | undefined) => {
+  if (!text) return null;
+  try {
+    const cleaned = text.trim();
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error("Gemini JSON Parse Error:", e, text);
+    return null;
   }
 };
 
-export const getLeadershipAuditQuestions = (): AssessmentQuestion[] => {
+// --- RESULTA CHAT LOGIC ---
+export const startResultaChat = (lang: 'de' | 'en' = 'de') => {
+  const systemInstruction = `Du bist "Resulta", die sympathische und hochkompetente KI-Begleiterin der Unternehmensberatung hs:results.
+  
+  DEINE PERSÖNLICHKEIT:
+  - Professionell, aber herzlich und empathisch (Senior-Berater-Niveau).
+  - Hilfsbereit und lösungsorientiert.
+  
+  DEIN WISSEN:
+  1. Unsere Tools:
+     - Organisation & Reorg (Audit Ihrer Strukturen). Link: [TOOL:ORGANIZATION_ANALYZER]
+     - Strategie (Klarheit in Märkten). Link: [TOOL:STRATEGY_CLARIFIER]
+     - Unternehmenskultur (Tiefenstruktur-Check). Link: [TOOL:CULTURE_SCANNER]
+     - Führung (Leadership Radar). Link: [TOOL:LEADERSHIP_RADAR]
+     - Veränderung (AI Change Consultant). Link: [TOOL:CHANGE_MANAGER]
+     - VentureForge (Digitale Transformation & Innovation). Link: [TOOL:INNOVATION_IDEATOR]
+     - Reorg Simulator (Simulation von Änderungen). Link: [TOOL:REORG_SIMULATOR]
+  
+  2. Datenschutz & Sicherheit:
+     - Wir hosten auf Google Cloud in der EU (Region Frankfurt).
+     - Volle DSGVO-Konformität.
+     - Daten werden nicht für das Training öffentlicher Modelle verwendet.
+     - Jeder Nutzer hat einen isolierten Datentresor (Intelligence Vault).
+     - Olaf Heger und Andre Stuer bürgen für höchste Diskretion.
+  
+  3. Berater:
+     - Olaf Heger (Essen): Experte für Innovation & moderne Org-Formen.
+     - Andre Stuer (Potsdam): Experte für Strategie & Transformation.
+  
+  REGELN FÜR ANTWORTEN:
+  - Wenn der Nutzer ein Problem beschreibt, empfehle EIN passendes hs:results Tool und verwende EXAKT dieses Format für den Link: [TOOL:VIEW_STATE_NAME].
+  - Antworte auf Deutsch, es sei denn, du wirst auf Englisch gefragt.
+  - Sei präzise beim Thema Datenschutz.
+  
+  BEISPIEL: "Ich empfehle Ihnen unser Organisations-Audit: [TOOL:ORGANIZATION_ANALYZER]"`;
+
+  return ai.chats.create({
+    model: modelName,
+    config: {
+      systemInstruction,
+      temperature: 0.7,
+    }
+  });
+};
+
+// Generate systemic questions
+export const generateSystemicQuestions = async (scenario: string, companyDesc: string, lang: 'de' | 'en' = 'de'): Promise<AssessmentQuestion[]> => {
+  const prompt = `Generiere 4 tiefgehende systemische Fragen für dieses Change-Szenario: ${scenario}. Kontext: ${companyDesc}. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. 
+  Antworte in JSON: [{id: string, text: string, placeholder: string}]`;
+  const response = await ai.models.generateContent({
+    model: modelName,
+    contents: prompt,
+    config: { responseMimeType: "application/json" }
+  });
+  return safeParse(response.text) || [];
+};
+
+// Analyze leadership team
+export const analyzeLeadershipTeam = async (employees: Employee[], toolAnswers: AssessmentResponse[], lang: 'de' | 'en' = 'de'): Promise<string> => {
+  const prompt = `Analysiere dieses Führungsteam: ${JSON.stringify(employees)}. Audit-Antworten: ${JSON.stringify(toolAnswers)}. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. Erstelle einen professionellen Bericht.`;
+  const response = await ai.models.generateContent({
+    model: modelName,
+    contents: prompt
+  });
+  return response.text || "";
+};
+
+// Generate coaching guide
+export const generateEmployeeCoaching = async (employee: Employee, lang: 'de' | 'en' = 'de'): Promise<CoachingGuide | null> => {
+  const prompt = `Erstelle einen coaching-leitfaden für diesen Mitarbeiter: ${JSON.stringify(employee)}. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. 
+  Antworte in JSON: {employeeName: string, focusArea: string, openingQuestion: string, keyPoints: string[], actionPlan: string}`;
+  const response = await ai.models.generateContent({
+    model: modelName,
+    contents: prompt,
+    config: { responseMimeType: "application/json" }
+  });
+  return safeParse(response.text);
+};
+
+// Returns hardcoded assessment questions
+export const getLeadershipAuditQuestions = (lang: 'de' | 'en' = 'de'): AssessmentQuestion[] => {
   return [
-    { id: 'l1', text: "Wie würden Sie die aktuelle Stimmung im Team in einem Wort beschreiben?", placeholder: "Angespannt, Euphorisch, Müde..." },
-    { id: 'l2', text: "Was war der größte Konflikt oder Erfolg in den letzten 4 Wochen?", placeholder: "Deadline verpasst, Erfolgreicher Launch..." },
-    { id: 'l3', text: "Wie stark nehmen Sie Ihre Rolle als Coach vs. als Manager wahr?", placeholder: "80% operatives Management, 20% Führung..." },
-    { id: 'l4', text: "Welches strategische Ziel muss dieses Team im nächsten Quartal unbedingt erreichen?", placeholder: "Umsatzsteigerung um 10%..." }
+    { id: 'l1', text: lang === 'de' ? "Wie schätzen Sie die psychologische Sicherheit im Team ein?" : "How do you assess psychological safety in the team?", placeholder: "..." },
+    { id: 'l2', text: lang === 'de' ? "Wie klar sind die Rollen und Verantwortlichkeiten?" : "How clear are roles and responsibilities?", placeholder: "..." },
+    { id: 'l3', text: lang === 'de' ? "Gibt es eine gemeinsam Vision?" : "Is there a shared vision?", placeholder: "..." }
   ];
 };
 
-const getSystemInstruction = (toolId: ChangeToolId): string => {
-  const base = "You are a Senior Organizational Development Consultant at HS Results. You combine systemic consulting with data-driven agility.";
-  
-  switch (toolId) {
-    case 'plan_kotter':
-      return `${base} Create a Change Plan based on John Kotter's 8-Step Process. Focus on quick wins and sustaining acceleration. Use the user's answers to tailor the steps specifically.`;
-    case 'analysis_swot':
-      return `${base} Perform a SWOT analysis specifically regarding the proposed change scenario. Incorporate the specific insights provided by the user in the questionnaire.`;
-    case 'analysis_stakeholder':
-      return `${base} Perform a Stakeholder Analysis. Map the stakeholders mentioned by the user and suggest specific communication strategies.`;
-    case 'analysis_gap':
-      return `${base} Perform a GAP Analysis. Contrast the Current State vs. Future State based on user input.`;
-    case 'model_adkar':
-      return `${base} Apply the ADKAR model (Prosci). Diagnose the blockage points based on the user's answers regarding Awareness, Desire, Knowledge, Ability.`;
-    case 'risk_assessment':
-      return `${base} Analyze systemic risks based on the user's fears and descriptions.`;
-    case 'tool_culture_amp':
-      return `${base} Acting as a Culture Amp Expert: Design a 'Listening Strategy' for this change. Suggest specific Pulse Survey themes, identify Engagement Drivers to watch, and propose how to use 'People Science' to reduce turnover risks based on the user's scenario.`;
-    case 'tool_qualtrics':
-      return `${base} Acting as a Qualtrics EmployeeXM Expert: Design an Experience Management plan. Identify key 'Moments that Matter' in this change lifecycle. Suggest text analytics keywords to monitor and sentiment analysis targets.`;
-    case 'tool_viva':
-      return `${base} Acting as a Microsoft Viva Insights Expert: Design a Collaboration Analysis plan. Focus on 'Digital Exhaust' metrics like Meeting Load, Focus Time, and Network Silos. Suggest interventions to improve well-being and adoption using Viva data.`;
-    case 'story_creation':
-      return `${base} Storytelling Expert Mode. Create 3 distinct Change Stories based on the inputs:
-      1. Fight the Dragon: Focus on the external threat (Crisis narrative).
-      2. Win the Princess: Focus on the vision/reward (Opportunity narrative).
-      3. Hybrid Approach: A balanced, realistic approach combining urgency and vision.
-      Each story must be compelling, emotional, and suitable for the target audience.`;
-    default:
-      return base;
-  }
+// Progress organizational analysis
+export const processOrgAnalysisStep = async (history: any[], lang: 'de' | 'en' = 'de'): Promise<OrgQuestionState | null> => {
+  const response = await ai.models.generateContent({
+    model: modelName,
+    contents: history,
+    config: { 
+        responseMimeType: "application/json",
+        systemInstruction: `Du bist ein Senior Management Consultant bei hs:results. Deine Aufgabe ist es, ein tiefgehendes Organisations-Audit durchzuführen. 
+        
+        PROZESS-FLOW:
+        1. Evaluiere die Historie. Zähle die Anzahl der Fragen, die der Nutzer bereits beantwortet hat.
+        2. Wenn der Nutzer weniger als 4 Fragen beantwortet hat: Stelle die NÄCHSTE schlaue, systemische Frage.
+        3. Gib dem Nutzer immer 3-4 Antwortoptionen (options) zur Auswahl.
+        4. Rückgabeformat bei Fragen: { "next_question": { "text": "Fragetext", "options": ["Option A", "Option B", "Option C"] } }
+        5. ERST WENN GENAU 4 Fragen beantwortet wurden: Liefere das finale Ergebnis (final_result).
+        6. Rückgabeformat bei Endergebnis: { "final_result": { "executive_summary": "...", "maturity_score": 0-100, "strengths": ["..."], "weaknesses": ["..."], "optimization_proposals": { "short_term": ["..."], "long_term": ["..."] } } }
+        
+        WICHTIG: Antworte AUSSCHLIESSLICH im JSON-Format. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}.`
+    }
+  });
+  return safeParse(response.text);
 };
 
-const getSchemaForTool = (toolId: ChangeToolId): any => {
-  // Schema definitions match previous ones to ensure UI compatibility
-  switch (toolId) {
-    case 'plan_kotter':
-      return {
+// Progress reorg step
+export const processReorgStep = async (history: any[], lang: 'de' | 'en' = 'de'): Promise<ReorgQuestionState | null> => {
+  const response = await ai.models.generateContent({
+    model: modelName,
+    contents: history,
+    config: { 
+        responseMimeType: "application/json",
+        systemInstruction: `Du bist ein Experte für Reorganisation und Transformation. Du begleitest den Nutzer durch eine Simulation von Strukturveränderungen.
+        
+        PROZESS-FLOW:
+        1. Evaluiere die Historie.
+        2. Wenn weniger als 4 strategische Fragen beantwortet wurden: Stelle die nächste präzise Frage.
+        3. Gib immer 3-4 Antwortoptionen (options) vor.
+        4. Rückgabeformat bei Fragen: { "next_question": { "text": "Fragetext", "options": ["Option 1", "Option 2", "Option 3"] } }
+        5. ERST NACH 4 Antworten: Generiere das finale Ergebnis (final_result).
+        6. Rückgabeformat bei Endergebnis: { "final_result": { "impact_analysis": { "title": "...", "description": "..." }, "diagnosis": { "key_assumptions": ["..."] }, "roadmap_30_60_90": { "day_30": ["..."], "day_60": ["..."], "day_90": ["..."] }, "risk_register": [{ "risk": "...", "early_signals": ["..."], "mitigations": ["..."] }], "communication_plan": { "talktracks": [{ "audience": "...", "core_message": "...", "faq_samples": [{ "q": "...", "a": "..." }] }] } } }
+        
+        WICHTIG: Antworte AUSSCHLIESSLICH im JSON-Format. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}.`
+    }
+  });
+  return safeParse(response.text);
+};
+
+// Generate culture hypotheses
+export const generateCultureHypotheses = async (stories: any, lang: 'de' | 'en' = 'de'): Promise<CultureHypothesis[]> => {
+  const prompt = `Du bist ein erfahrener Unternehmensberater. Basierend auf diesen kulturellen Geschichten, generiere genau 3 mutige Kulturhypothesen.
+  Stories: ${JSON.stringify(stories)}. 
+  Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. 
+  Antworte STRENG im JSON-Format als Array mit dieser Struktur: 
+  [{"id": "h1", "text": "Hypothesen-Text", "reasoning": "Kurze systemische Begründung"}]`;
+  
+  const response = await ai.models.generateContent({
+    model: modelName,
+    contents: prompt,
+    config: { responseMimeType: "application/json" }
+  });
+  return safeParse(response.text) || [];
+};
+
+// Generate dynamic culture goals
+export const generateCultureGoals = async (context: any, lang: 'de' | 'en' = 'de'): Promise<string[]> => {
+  const prompt = `Basierend auf diesem Organisations-Kontext und diesen kulturellen Beobachtungen: ${JSON.stringify(context)}. 
+  Generiere genau 3 prägnante, mutige und gegensätzliche strategische Zielrichtungen (Nordsterne) für die Kulturentwicklung dieser spezifischen Organisation.
+  Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. 
+  Antworte STRENG im JSON-Format als einfaches Array von Strings: ["Richtung 1", "Richtung 2", "Richtung 3"]`;
+  
+  const response = await ai.models.generateContent({
+    model: modelName,
+    contents: prompt,
+    config: { responseMimeType: "application/json" }
+  });
+  return safeParse(response.text) || [];
+};
+
+// Generate final culture analysis plan
+export const generateCultureAnalysisPlan = async (stories: any, ratings: any[], direction: string, lang: 'de' | 'en' = 'de'): Promise<CultureAnalysisResult | null> => {
+  const prompt = `Erstelle einen umfassenden Kultur-Analyse-Plan als Senior Executive Consultant bei hs:results.
+  
+  EINGABEN:
+  - Beobachtete Geschichten: ${JSON.stringify(stories)}
+  - Validierte Hypothesen: ${JSON.stringify(ratings)}
+  - Strategische Zielrichtung: ${direction}
+  - Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}.
+  
+  ERGEBNIS-STRUKTUR (STRENGES JSON):
+  {
+    "profile": {
+      "title": "Titel der Analyse",
+      "summary": "Executive Zusammenfassung des Ist-Zustands",
+      "shadow_culture_traits": ["Negatives Muster 1", "Negatives Muster 2"],
+      "strengths": ["Positive Ressource 1", "Positive Ressource 2"]
+    },
+    "levers": [
+      { "area": "Handlungsfeld", "impact": "High/Medium/Low", "description": "Warum wichtig?" }
+    ],
+    "interventions": [
+      { "title": "Maßnahme", "target": "Zielgruppe", "action": "Konkrete Umsetzung" }
+    ],
+    "experiment_plan_6_weeks": [
+      { "week": "Woche 1", "focus": "Schwerpunkt", "experiment": "Hypothesen-Experiment", "success_signal": "Woran messen wir Erfolg?" }
+    ]
+  }`;
+
+  const response = await ai.models.generateContent({
+    model: modelName,
+    contents: prompt,
+    config: { responseMimeType: "application/json" }
+  });
+  return safeParse(response.text);
+};
+
+// Generate strategy options
+export const generateStrategyOptions = async (context: any, lang: 'de' | 'en' = 'de'): Promise<StrategyOption[]> => {
+  const prompt = `Generiere 3 Strategie-Optionen. Kontext: ${JSON.stringify(context)}. Sprache: ${lang}. Antworte in JSON: [{id: string, title: string, description: string, opportunity_space: string}]`;
+  const response = await ai.models.generateContent({
+    model: modelName,
+    contents: prompt,
+    config: { responseMimeType: "application/json" }
+  });
+  return safeParse(response.text) || [];
+};
+
+// Create a comprehensive strategy plan
+export const generateStrategyFinalPlan = async (context: any, selected: StrategyOption, answers: any[], lang: 'de' | 'en' = 'de'): Promise<StrategyPlanResult | null> => {
+  const prompt = `Erstelle einen detaillierten und finalen Strategie-Plan als Senior Strategy Consultant bei hs:results.
+  
+  EINGABEN:
+  - Organisations-Kontext: ${JSON.stringify(context)}
+  - Gewählte Strategische Option: ${JSON.stringify(selected)}
+  - Deep-Dive Antworten des Nutzers: ${JSON.stringify(answers)}
+  
+  Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. 
+  
+  Antworte STRENG im JSON-Format gemessen am bereitgestellten responseSchema.`;
+
+  const response = await ai.models.generateContent({
+    model: modelName,
+    contents: prompt,
+    config: { 
+      responseMimeType: "application/json",
+      responseSchema: {
         type: Type.OBJECT,
         properties: {
-          summary: { type: Type.STRING },
-          data: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                step: { type: Type.NUMBER },
-                name: { type: Type.STRING },
-                action: { type: Type.STRING },
-                rationale: { type: Type.STRING }
-              }
-            }
-          }
-        }
-      };
-    case 'analysis_swot':
-      return {
-        type: Type.OBJECT,
-        properties: {
-          summary: { type: Type.STRING },
-          data: {
+          one_page_strategy: {
             type: Type.OBJECT,
             properties: {
-              strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
-              weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
-              opportunities: { type: Type.ARRAY, items: { type: Type.STRING } },
-              threats: { type: Type.ARRAY, items: { type: Type.STRING } }
-            }
-          }
-        }
-      };
-    case 'analysis_stakeholder':
-      return {
-        type: Type.OBJECT,
-        properties: {
-          summary: { type: Type.STRING },
-          data: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                group: { type: Type.STRING },
-                interest: { type: Type.STRING, enum: ['High', 'Medium', 'Low'] },
-                power: { type: Type.STRING, enum: ['High', 'Medium', 'Low'] },
-                strategy: { type: Type.STRING },
-                tactics: { type: Type.STRING }
+              vision_statement: { type: Type.STRING },
+              target_audience: { type: Type.STRING },
+              unique_value_proposition: { type: Type.STRING }
+            },
+            required: ["vision_statement", "target_audience", "unique_value_proposition"]
+          },
+          implementation: {
+            type: Type.OBJECT,
+            properties: {
+              decision_logic: { type: Type.STRING },
+              main_focus: { type: Type.STRING },
+              initiative_portfolio: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING },
+                    priority: { type: Type.STRING },
+                    impact: { type: Type.STRING }
+                  },
+                  required: ["name", "priority", "impact"]
+                }
+              },
+              kpi_framework: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    kpi: { type: Type.STRING },
+                    target: { type: Type.STRING }
+                  },
+                  required: ["kpi", "target"]
+                }
               }
-            }
-          }
-        }
-      };
-    case 'analysis_gap':
-      return {
-        type: Type.OBJECT,
-        properties: {
-          summary: { type: Type.STRING },
-          data: {
+            },
+            required: ["decision_logic", "main_focus", "initiative_portfolio", "kpi_framework"]
+          },
+          roadmap: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
               properties: {
-                area: { type: Type.STRING },
-                current: { type: Type.STRING },
-                target: { type: Type.STRING },
-                action: { type: Type.STRING }
-              }
+                phase: { type: Type.STRING },
+                timing: { type: Type.STRING },
+                milestones: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ["phase", "timing", "milestones"]
             }
-          }
-        }
-      };
-    case 'model_adkar':
-      return {
-        type: Type.OBJECT,
-        properties: {
-          summary: { type: Type.STRING },
-          data: {
+          },
+          risks: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
               properties: {
-                stage: { type: Type.STRING, enum: ['Awareness', 'Desire', 'Knowledge', 'Ability', 'Reinforcement'] },
-                status: { type: Type.STRING },
-                tactic: { type: Type.STRING }
-              }
-            }
-          }
-        }
-      };
-    case 'tool_culture_amp':
-    case 'tool_qualtrics':
-    case 'tool_viva':
-      return {
-        type: Type.OBJECT,
-        properties: {
-          summary: { type: Type.STRING },
-          data: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                focusArea: { type: Type.STRING, description: "The strategic module or theme" },
-                metric: { type: Type.STRING, description: "The specific KPI or Metric to measure" },
-                insight: { type: Type.STRING, description: "What the AI predicts we will find or why this matters" },
-                intervention: { type: Type.STRING, description: "Recommended action based on this data" }
-              }
-            }
-          }
-        }
-      };
-    case 'story_creation':
-      return {
-        type: Type.OBJECT,
-        properties: {
-          summary: { type: Type.STRING },
-          data: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                style: { type: Type.STRING, enum: ['Fight the Dragon', 'Win the Princess', 'Hybrid Approach'] },
-                headline: { type: Type.STRING },
-                narrative: { type: Type.STRING, description: "The actual story text (2-3 sentences)" },
-                keyMessage: { type: Type.STRING },
-                callToAction: { type: Type.STRING }
-              }
-            }
-          }
-        }
-      };
-    default: 
-       return {
-        type: Type.OBJECT,
-        properties: {
-          summary: { type: Type.STRING },
-          data: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                riskArea: { type: Type.STRING },
-                probability: { type: Type.STRING },
-                impact: { type: Type.STRING },
+                risk: { type: Type.STRING },
                 mitigation: { type: Type.STRING }
-              }
+              },
+              required: ["risk", "mitigation"]
             }
           }
-        }
-      };
-  }
+        },
+        required: ["one_page_strategy", "implementation", "roadmap", "risks"]
+      }
+    }
+  });
+  return safeParse(response.text);
 };
 
-// New function to generate context-specific reflection questions
-export const generateSystemicQuestions = async (
-  scenario: string,
-  companyDesc: string
-): Promise<AssessmentQuestion[]> => {
-  const prompt = `
-    Context:
-    Scenario: "${scenario}"
-    Company Description: "${companyDesc}"
+// Generate venture forge concepts
+export const generateVentureConcepts = async (dna: any, lang: 'de' | 'en' = 'de'): Promise<VentureConcept[]> => {
+  const prompt = `Generiere 3 innovative Venture-Konzepte für: ${JSON.stringify(dna)}. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. Antworte STRENG im JSON-Format.`;
+  const response = await ai.models.generateContent({
+    model: modelName,
+    contents: prompt,
+    config: { responseMimeType: "application/json", temperature: 0.9 }
+  });
+  return safeParse(response.text) || [];
+};
 
-    Task:
-    Generate 4 systemic reflection questions in German for the user.
-    - Question 1-3: Should be specific to the cultural barriers, hidden rules, or leadership dynamics relevant to THIS specific scenario.
-    - Question 4: MUST be a paradoxical question (e.g., "What exactly must we do to ensure this project fails miserably?").
-    
-    Output JSON array of objects with 'id', 'text', 'placeholder'.
-  `;
+// Deep Dive into a specific Venture Concept
+export const generateVentureDeepDive = async (concept: VentureConcept, dna: any, lang: 'de' | 'en' = 'de'): Promise<VentureDeepDive | null> => {
+  const prompt = `Erstelle eine detaillierte Deep-Dive-Analyse für: ${concept.name}. Kontext: ${JSON.stringify(dna)}. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. Antworte in JSON.`;
+  const response = await ai.models.generateContent({
+    model: modelName,
+    contents: prompt,
+    config: { responseMimeType: "application/json" }
+  });
+  return safeParse(response.text);
+};
 
+// Simple text summarization task using Gemini 3 Flash
+export const summarizeFileContent = async (fileName: string, contentSnippet: string, lang: 'de' | 'en' = 'de'): Promise<string> => {
+  const prompt = `Fasse den Inhalt dieses Dokuments ("${fileName}") prägnant in 2-3 Sätzen zusammen. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. Dokument-Ausschnitt: ${contentSnippet}`;
   try {
     const response = await ai.models.generateContent({
-      model: modelName,
+      model: 'gemini-3-flash-preview',
       contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              id: { type: Type.STRING },
-              text: { type: Type.STRING },
-              placeholder: { type: Type.STRING }
-            }
-          }
-        }
-      }
     });
-
-    if (response.text) {
-      return JSON.parse(response.text) as AssessmentQuestion[];
-    }
-    return [];
+    return response.text || "Zusammenfassung nicht verfügbar.";
   } catch (error) {
-    console.error("Error generating systemic questions:", error);
-    // Fallback if AI fails
-    return [
-      { id: 'f1', text: "Was darf sich durch dieses Projekt auf keinen Fall verändern?", placeholder: "Werte, Traditionen..." },
-      { id: 'f2', text: "Wer verliert durch den Erfolg dieses Projekts am meisten?", placeholder: "Abteilung X, Führungskräfte..." },
-      { id: 'f3', text: "Welches ungeschriebene Gesetz der Firma wird hier verletzt?", placeholder: "Man kritisiert nie den Chef..." },
-      { id: 'f4', text: "Was müssten Sie tun, um das Projekt mit Sicherheit gegen die Wand zu fahren?", placeholder: "Paradoxe Intervention..." }
-    ];
+    return "Fehler bei der Zusammenfassung.";
   }
 };
 
+// Utility to fetch questions for assessment tools
+export const getAssessmentQuestions = (toolId: ChangeToolId, lang: 'de' | 'en' = 'de'): AssessmentQuestion[] => {
+  const questions: Record<string, AssessmentQuestion[]> = {
+    plan_kotter: [
+      { id: 'k1', text: lang === 'de' ? "Was ist der Haupttreiber für die Dringlichkeit?" : "What is the main driver for urgency?", placeholder: "Wettbewerbsdruck, Marktveränderung..." },
+      { id: 'k2', text: lang === 'de' ? "Wer sind die wichtigsten Personen für die Führungskoalition?" : "Who are the key people for the guiding coalition?", placeholder: "Abteilungsleiter X, CEO, Projektleiter Y..." },
+      { id: 'k3', text: lang === 'de' ? "Wie lautet die Kernvision?" : "What is the core vision?", placeholder: "Wir werden der effizienteste Anbieter durch..." }
+    ],
+    story_creation: [
+      { id: 'st1', text: lang === 'de' ? "Wer ist der 'Drache' (Gefahr)?" : "Who is the 'Dragon'?", placeholder: "Die Irrelevanz am Markt..." },
+      { id: 'st2', text: lang === 'de' ? "Was ist der 'Prinzessin' (Ziel)?" : "What is the 'Princess'?", placeholder: "Führerschaft in Technologie..." }
+    ],
+    analysis_swot: [
+      { id: 'sw1', text: lang === 'de' ? "Stärken?" : "Strengths?", placeholder: "Expertise, Kapital..." },
+      { id: 'sw2', text: lang === 'de' ? "Schwächen?" : "Weaknesses?", placeholder: "Alte Systeme, Prozesse..." }
+    ],
+    model_adkar: [
+      { id: 'ad1', text: lang === 'de' ? "Status Bewusstsein?" : "Status Awareness?", placeholder: "Wissen die Mitarbeiter warum?" },
+      { id: 'ad2', text: lang === 'de' ? "Größte Barrieren?" : "Main barriers?", placeholder: "Fehlende Skills..." }
+    ],
+    analysis_stakeholder: [
+      { id: 'sh1', text: lang === 'de' ? "Wer sind die wichtigsten Gruppen?" : "Who are the key groups?", placeholder: "Betriebsrat, IT-Team, Kunden..." }
+    ],
+    analysis_gap: [
+      { id: 'gap1', text: lang === 'de' ? "Ist-Zustand?" : "Current state?", placeholder: "Manuelle Prozesse, hohe Fehlerquote..." },
+      { id: 'gap2', text: lang === 'de' ? "Soll-Zustand?" : "Desired state?", placeholder: "Automatisierter Workflow..." }
+    ],
+    risk_assessment: [
+      { id: 'r1', text: lang === 'de' ? "Hauptrisiken?" : "Main risks?", placeholder: "Widerstand der Belegschaft, Budgetüberschreitung..." }
+    ]
+  };
+  return questions[toolId] || [];
+};
+
+// Professional consultancy report generation
 export const generateChangeAnalysis = async (
-  toolId: ChangeToolId,
-  scenario: string,
-  companySize: string,
-  companyDesc: string,
-  companyUrl: string,
-  assessmentAnswers: AssessmentResponse[],
-  cultureAnswers: AssessmentResponse[] // New parameter
-): Promise<AnalysisResult> => {
+  toolId: ChangeToolId, 
+  scenario: string, 
+  companySize: string, 
+  companyDesc: string, 
+  companyUrl: string, 
+  toolAnswers: AssessmentResponse[],
+  cultureAnswers: AssessmentResponse[],
+  lang: 'de' | 'en' = 'de'
+): Promise<AnalysisResult | null> => {
+  const prompt = `Du bist ein Senior Change Management Consultant. Erstelle einen tiefgehenden, hochprofessionellen Bericht für folgendes Szenario:
+  SZENARIO: ${scenario}
+  METHODE: ${toolId}
+  KONTEXT: ${companyDesc}
+  ANTWORTEN: ${JSON.stringify(toolAnswers)}
+  KULTUR: ${JSON.stringify(cultureAnswers)}
   
-  // Construct a rich context from the Q&A
-  const toolQaContext = assessmentAnswers.map(a => `Tool Assessment Q: ${a.questionText}\nA: ${a.answer}`).join('\n\n');
-  const cultureQaContext = cultureAnswers.map(a => `Culture Reflection Q: ${a.questionText}\nA: ${a.answer}`).join('\n\n');
-
-  const prompt = `
-    Basic Context:
-    Scenario: "${scenario}".
-    Company Size: "${companySize}".
-    
-    Company Profile:
-    Description: "${companyDesc}"
-    Website URL: "${companyUrl}"
-    (Use the company profile and URL to infer industry context and organizational culture if possible).
-
-    Systemic Culture Reflection (User's insights on hidden dynamics):
-    ${cultureQaContext}
-
-    Deep Dive Tool Assessment:
-    ${toolQaContext}
-    
-    Based on the Interview above, perform the requested analysis strictly following the schema.
-    Ensure the advice is actionable, specific to the user's answers, and professional.
-    Language: German.
-  `;
+  SPRACHE: ${lang === 'de' ? 'Deutsch' : 'Englisch'}
+  
+  DEIN BERICHT MUSS FOLGENDES JSON-FORMAT HABEN:
+  {
+    "summary": "Prägnante Management-Zusammenfassung",
+    "systemic_diagnosis": "Tiefe Analyse der unsichtbaren Dynamiken und Widerstände",
+    "strategic_logic": "Warum dieser Weg gewählt wurde",
+    "phases": [
+      { "title": "Phase 1", "description": "Details..." }
+    ],
+    "risks": [
+      { "risk": "Name", "mitigation": "Gegenmaßnahme" }
+    ],
+    "action_plan": [
+      { "task": "Konkrete Aufgabe", "priority": "High/Medium/Low", "target": "Zielgruppe/Verantwortlich" }
+    ],
+    "cultural_levers": ["Hebel 1", "Hebel 2"]
+  }`;
 
   try {
     const response = await ai.models.generateContent({
       model: modelName,
       contents: prompt,
-      config: {
-        systemInstruction: getSystemInstruction(toolId),
-        responseMimeType: "application/json",
-        responseSchema: getSchemaForTool(toolId)
-      }
+      config: { responseMimeType: "application/json" }
     });
-
-    if (response.text) {
-      const parsed = JSON.parse(response.text);
-      return {
-        toolId,
-        summary: parsed.summary,
-        data: parsed.data
-      };
-    }
-    throw new Error("No text returned from Gemini");
-  } catch (error) {
-    console.error("Error generating change analysis:", error);
-    throw error;
-  }
-};
-
-export const analyzeLeadershipTeam = async (
-  employees: Employee[],
-  assessmentAnswers: AssessmentResponse[]
-): Promise<string> => {
-  const dataString = JSON.stringify(employees);
-  const qaContext = assessmentAnswers.map(a => `Manager's Self-Reflection - Q: ${a.questionText}\nA: ${a.answer}`).join('\n\n');
-
-  const prompt = `
-    You are the "HS Results Leadership AI Coach".
     
-    Context from Manager (User):
-    ${qaContext}
-
-    Hard Data (Team Metrics):
-    ${dataString}
-
-    Task:
-    Analyze the team data in the context of the manager's self-reflection.
-    1. Identify the top 3 systemic patterns. Connect the data (e.g., low motivation) with the manager's description (e.g., "team is tired").
-    2. Suggest 3 specific, strategic leadership interventions that address both the data and the manager's stated goals.
+    const parsed = safeParse(response.text);
+    if (!parsed) return null;
     
-    Keep the tone professional, encouraging, and clear.
-    Format with Markdown headers.
-    Language: German.
-  `;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: modelName,
-      contents: prompt,
-    });
-    return response.text || "Could not generate analysis.";
+    return {
+      toolId,
+      summary: parsed.summary || "Analyse erfolgreich erstellt.",
+      data: parsed
+    };
   } catch (error) {
-    console.error("Error analyzing leadership data:", error);
-    return "An error occurred while analyzing the data. Please try again.";
-  }
-};
-
-export const generateEmployeeCoaching = async (employee: Employee): Promise<CoachingGuide> => {
-  const prompt = `
-    Create a 1:1 coaching guide for employee: ${employee.name}.
-    Role: ${employee.role}.
-    Performance: ${employee.performance}/100.
-    Motivation: ${employee.motivation}/100.
-    Workload: ${employee.workload}/100.
-    
-    The goal is to improve performance or retain high performers, depending on the data.
-    Be empathetic but results-oriented.
-    Language: German.
-  `;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: modelName,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            employeeName: { type: Type.STRING },
-            focusArea: { type: Type.STRING },
-            openingQuestion: { type: Type.STRING },
-            keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
-            actionPlan: { type: Type.STRING }
-          }
-        }
-      }
-    });
-
-    if (response.text) {
-      return JSON.parse(response.text) as CoachingGuide;
-    }
-    throw new Error("No coaching data generated");
-  } catch (error) {
-    console.error("Error generating coaching guide:", error);
     throw error;
   }
 };

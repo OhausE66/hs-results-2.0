@@ -3,19 +3,92 @@ export enum ViewState {
   HOME = 'HOME',
   CHANGE_MANAGER = 'CHANGE_MANAGER',
   LEADERSHIP_RADAR = 'LEADERSHIP_RADAR',
-  LOGIN = 'LOGIN'
+  ORGANIZATION_ANALYZER = 'ORGANIZATION_ANALYZER',
+  REORG_SIMULATOR = 'REORG_SIMULATOR',
+  CULTURE_SCANNER = 'CULTURE_SCANNER',
+  STRATEGY_CLARIFIER = 'STRATEGY_CLARIFIER',
+  INNOVATION_IDEATOR = 'INNOVATION_IDEATOR',
+  MICROTRAININGS = 'MICROTRAININGS',
+  MINIMAL_INVASIVE_CHANGE = 'MINIMAL_INVASIVE_CHANGE',
+  QUICKSTART = 'QUICKSTART',
+  SPRINT_MY_ORG = 'SPRINT_MY_ORG',
+  PIMP_MY_ORG = 'PIMP_MY_ORG',
+  AGILE_CHANGE_BOOTCAMP = 'AGILE_CHANGE_BOOTCAMP',
+  CLIENTS = 'CLIENTS',
+  PUBLICATIONS = 'PUBLICATIONS',
+  SECURITY = 'SECURITY',
+  FILE_VAULT = 'FILE_VAULT',
+  LOGIN = 'LOGIN',
+  PROFILE = 'PROFILE',
+  LEGAL = 'LEGAL',
+  ADMIN = 'ADMIN'
+}
+
+export interface UserProfile {
+  uid: string;
+  name: string;
+  email: string;
+  photoURL: string;
+  createdAt: string;
+}
+
+export interface FileRecord {
+  id: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  uploadDate: string;
+  downloadURL: string;
+  storagePath: string;
+  notes: string;
+  aiSummary: string;
+  status: 'processing' | 'ready' | 'error';
+}
+
+export interface SavedProject {
+  id: string;
+  title: string;
+  toolId: string;
+  inputs: any; 
+  results: any;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrgContextData {
+  id?: string;
+  templateName: string;
+  size: string;
+  establishedSince: string;
+  industry: string;
+  innovationLevel: number;
+  mainProblem: string;
+  profitability: number;
+  lastAnalysisResults?: {
+    toolId: string;
+    summary: string;
+    strengths: string[];
+    weaknesses: string[];
+    score?: number;
+    updatedAt: string;
+  };
 }
 
 export interface Employee {
   id: number;
   name: string;
   role: string;
-  performance: number; // 0-100
-  motivation: number; // 0-100
-  workload: number; // 0-100
+  performance: number; 
+  motivation: number; 
+  workload: number; 
   department: string;
-  softSkills?: string[]; // New
-  lastFeedback?: string; // New
+  softSkills?: string[];
+  lastFeedback?: string;
+  hbdiQuadrant?: 'A' | 'B' | 'C' | 'D';
+  observations?: {
+    positive: string[];
+    critical: string[];
+  };
 }
 
 export type ChangeToolId = 
@@ -28,7 +101,7 @@ export type ChangeToolId =
   | 'tool_culture_amp'
   | 'tool_qualtrics'
   | 'tool_viva'
-  | 'story_creation'; // New
+  | 'story_creation';
 
 export interface ChangeToolDefinition {
   id: ChangeToolId;
@@ -37,11 +110,25 @@ export interface ChangeToolDefinition {
   icon: any;
 }
 
-// New Types for Assessment
+export interface OrgContext {
+  scenario: string;
+  companyDesc: string;
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+  reorgDetails?: {
+    type: string;
+    goal: string;
+    risks: string[];
+    roadmap: any;
+  };
+}
+
 export interface AssessmentQuestion {
   id: string;
   text: string;
   placeholder: string;
+  options?: string[];
 }
 
 export interface AssessmentResponse {
@@ -50,67 +137,32 @@ export interface AssessmentResponse {
   answer: string;
 }
 
-// Generic Interfaces for dynamic content
 export interface AnalysisResult {
   toolId: ChangeToolId;
   summary: string;
-  data: any; // Dynamic based on tool
+  data: any;
 }
 
-export interface KotterStep {
-  step: number;
-  name: string;
-  action: string;
-  rationale: string;
+export interface HBDIProfile {
+  A: number;
+  B: number;
+  C: number;
+  D: number;
 }
 
-export interface SWOTItem {
-  category: 'Strengths' | 'Weaknesses' | 'Opportunities' | 'Threats';
-  points: string[];
-}
-
-export interface StakeholderGroup {
-  group: string;
-  interest: 'High' | 'Medium' | 'Low';
-  power: 'High' | 'Medium' | 'Low';
-  strategy: string; // e.g. "Manage Closely", "Keep Informed"
-  tactics: string;
-}
-
-export interface GapAnalysisItem {
-  area: string;
-  current: string;
-  target: string;
-  action: string;
-}
-
-export interface AdkarStage {
-  stage: 'Awareness' | 'Desire' | 'Knowledge' | 'Ability' | 'Reinforcement';
-  status: string;
-  tactic: string;
-}
-
-export interface ListeningStrategyItem {
-  focusArea: string;
-  metric: string; // e.g. "Meeting Load", "Sentiment Score"
-  insight: string; // What to look for
-  intervention: string; // Action
-}
-
-// New interface for Story
-export interface StoryStrategy {
-  style: 'Fight the Dragon' | 'Win the Princess' | 'Hybrid Approach';
-  headline: string;
-  narrative: string;
-  keyMessage: string;
-  callToAction: string;
-}
-
-// New Types for Leadership Radar
 export interface CoachingGuide {
   employeeName: string;
   focusArea: string;
   openingQuestion: string;
   keyPoints: string[];
   actionPlan: string;
+}
+
+export interface HBDIQuestion {
+  id: number;
+  question: string;
+  options: {
+    type: 'A' | 'B' | 'C' | 'D';
+    text: string;
+  }[];
 }
