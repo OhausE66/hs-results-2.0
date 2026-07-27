@@ -11,9 +11,9 @@ import {
   ChevronLeft, ArrowRight, Target, Layers, Zap, CheckCircle, Search, TrendingUp, BarChart3, UserCheck, AlertCircle, Calendar, ClipboardCheck, Briefcase, FileText, ArrowRightLeft, X, Info, Save, MessageCircle, HelpCircle, ArrowDownCircle, Lightbulb, UserPlus, Settings, SaveAll, FileSearch, ShieldCheck, Database
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { GoogleGenAI } from "@google/genai";
 import { Auth } from '../components/Auth';
 import { saveProjectSession } from '../services/firebase';
+import { generateContent } from '../services/geminiService';
 
 const TEAM_SCENARIO = {
   title: "Transformation der Sales-Abteilung 2025",
@@ -202,10 +202,9 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
     setLoadingQuestions(true);
     setStep('REFLECTION');
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const prompt = `Du bist ein Senior Executive Coach. Basierend auf dieser Führungsherausforderung: "${leaderContext.challengeSketch}" im Kontext eines ${leaderContext.position} mit einer Führungsspanne von ${leaderContext.spanOfControl}, generiere genau 5 kurze, tiefgehende, paradoxe systemische Reflexionsfragen. Die Fragen sollen helfen, blinde Flecken in der Team-Dynamik und der eigenen Rolle aufzudecken. Antworte nur mit den Fragen als einfache liste, getrennt durch Zeilenumbrüche.`;
       
-      const response = await ai.models.generateContent({
+      const response = await generateContent({
         model: 'gemini-3-flash-preview',
         contents: prompt
       });
@@ -237,7 +236,6 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
     setStep('ANALYSIS');
     setLoadingAnalysis(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const prompt = `Analysiere als Senior Management Consultant die folgende Führungssituation und erstelle einen ausführlichen Strategie-Bericht.
       UNTERNEHMEN: ${leaderContext.company}
       POSITION: ${leaderContext.position}
@@ -255,7 +253,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
         "next_steps": ["Schritt 1", "Schritt 2", "Schritt 3"]
       }`;
       
-      const response = await ai.models.generateContent({
+      const response = await generateContent({
         model: 'gemini-3-flash-preview',
         contents: prompt,
         config: { responseMimeType: "application/json" }

@@ -124,7 +124,7 @@ const safeParse = (text: string | undefined) => {
   }
 };
 
-const generateContent = async (params: { model?: string, contents: any, config?: any }) => {
+export const generateContent = async (params: { model?: string, contents: any, config?: any }) => {
   const res = await fetch('/api/gemini/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
