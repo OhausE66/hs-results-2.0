@@ -16,8 +16,8 @@ export const Security: React.FC<SecurityProps> = ({ setView }) => {
 
   const securityFeatures = [
     {
-      title: language === 'de' ? "DSGVO-konform" : "GDPR Compliant",
-      desc: language === 'de' ? "Verarbeitung nach klaren Zwecken, Datenminimierung, transparente Information." : "Processing for clear purposes, data minimization, transparent information.",
+      title: language === 'de' ? "DSGVO-orientiert" : "GDPR-oriented",
+      desc: language === 'de' ? "Verarbeitung nach klaren Zwecken, Datenminimierung und transparenter Information." : "Processing for clear purposes, data minimization, and transparent information.",
       icon: FileCheck,
       accent: "hs-blue"
     },
@@ -28,14 +28,14 @@ export const Security: React.FC<SecurityProps> = ({ setView }) => {
       accent: "hs-accent"
     },
     {
-      title: language === 'de' ? "EU-Hosting" : "EU Hosting",
-      desc: language === 'de' ? "Datenverarbeitung auf Servern in der EU (keine unnötigen Drittlandtransfers)." : "Data processing on servers in the EU (no unnecessary third-country transfers).",
+      title: language === 'de' ? "Cloud-Hosting" : "Cloud Hosting",
+      desc: language === 'de' ? "Einsatz professioneller Cloud-Dienste mit datenschutzfreundlicher Konfiguration, soweit verfügbar." : "Use of professional cloud services with privacy-friendly configuration where available.",
       icon: Server,
       accent: "hs-orange"
     },
     {
       title: language === 'de' ? "Verschlüsselung" : "Encryption",
-      desc: language === 'de' ? "TLS bei der Übertragung, Verschlüsselung im Ruhezustand; optional Ende-zu-Ende für sensible Inhalte." : "TLS during transmission, encryption at rest; optional end-to-end for sensitive content.",
+      desc: language === 'de' ? "TLS bei der Übertragung und Zugriffsschutz auf Anwendungsebene." : "TLS during transmission and access protection at application level.",
       icon: Lock,
       accent: "hs-blue"
     },
@@ -105,11 +105,11 @@ export const Security: React.FC<SecurityProps> = ({ setView }) => {
                   <div className="space-y-4">
                      <div className="flex items-center space-x-3 text-hs-accent">
                         <CheckCircle2 size={20} />
-                        <span className="font-bold text-lg">{language === 'de' ? 'ISO-Standard Architektur' : 'ISO-Standard Architecture'}</span>
+                        <span className="font-bold text-lg">{language === 'de' ? 'Sicherheitsorientierte Architektur' : 'Security-oriented architecture'}</span>
                      </div>
                      <div className="flex items-center space-x-3 text-hs-accent">
                         <CheckCircle2 size={20} />
-                        <span className="font-bold text-lg">End-to-End Encryption</span>
+                        <span className="font-bold text-lg">TLS Encryption</span>
                      </div>
                      <div className="flex items-center space-x-3 text-hs-accent">
                         <CheckCircle2 size={20} />
@@ -160,8 +160,8 @@ export const Security: React.FC<SecurityProps> = ({ setView }) => {
                    <p className="text-lg font-bold text-hs-accent">{language === 'de' ? 'Sie behalten die volle Kontrolle.' : 'You maintain full control.'}</p>
                    <p className="text-slate-300 text-sm leading-relaxed">
                       {language === 'de' 
-                        ? 'Jeder Datenupload, jede KI-Analyse und jedes BeraterInnenprofil wird in isolierten Sicherheitscontainern verwaltet. Wir nutzen modernste Infrastruktur, um sicherzustellen, dass keine Datenmischung stattfindet.'
-                        : 'Every data upload, AI analysis, and consultant profile is managed in isolated security containers. We use state-of-the-art infrastructure to ensure no data mixing occurs.'}
+                        ? 'Datenuploads, KI-Analysen und BeraterInnenprofile werden zweckgebunden verarbeitet und über rollenbasierte Zugriffe geschützt. Unser Ziel ist eine klare Trennung von Nutzer- und Projektdaten.'
+                        : 'Data uploads, AI analyses, and consultant profiles are processed for defined purposes and protected through role-based access. Our goal is a clear separation of user and project data.'}
                    </p>
                 </div>
                 <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col justify-center">
@@ -173,8 +173,8 @@ export const Security: React.FC<SecurityProps> = ({ setView }) => {
                    </div>
                    <p className="text-[11px] text-slate-400 italic">
                       {language === 'de'
-                        ? 'Unsere Systeme sind darauf ausgelegt, die strengen Anforderungen von Compliance-Abteilungen in regulierten Industrien (Finanzen, Healthcare, Automotive) zu erfüllen.'
-                        : 'Our systems are designed to meet the strict requirements of compliance departments in regulated industries (finance, healthcare, automotive).'}
+                        ? 'Unsere Systeme sind darauf ausgelegt, Compliance-Prüfungen in anspruchsvollen Organisationen nachvollziehbar zu unterstützen.'
+                        : 'Our systems are designed to support compliance reviews in demanding organizations in a transparent way.'}
                    </p>
                 </div>
              </div>

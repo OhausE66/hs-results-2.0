@@ -44,8 +44,8 @@ async function startServer() {
     - hs:results hilft bei der Gap-Analyse, Governance-Strategien und AI-Act Readiness-Checks.
   
     DATENSCHUTZ & SICHERHEIT:
-    - Wir hosten auf Google Cloud in der EU (Region Frankfurt).
-    - Volle DSGVO-Konformität.
+    - Wir setzen auf professionelle Cloud-Dienste und achten auf datenschutzfreundliche Konfigurationen.
+    - Datenschutz, Transparenz und Datenminimierung sind zentrale Anforderungen.
     - Daten werden nicht für das Training öffentlicher Modelle verwendet.
     - Jeder Nutzer hat einen isolierten Datentresor (Intelligence Vault).
     - Olaf Heger und Andre Stuer bürgen für höchste Diskretion.
