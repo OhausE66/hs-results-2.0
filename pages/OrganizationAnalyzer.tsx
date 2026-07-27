@@ -388,7 +388,7 @@ ${(finalResult.optimization_proposals?.long_term || []).map(p => `- ${p}`).join(
                  {loading ? (
                     <div className="py-20 text-center">
                        <Loader2 size={48} className="animate-spin mx-auto text-hs-blue mb-6" />
-                       <p className="font-black text-hs-blue uppercase animate-pulse">Berater-KI analysiert den Kontext...</p>
+                       <p className="font-black text-hs-blue uppercase animate-pulse">BeraterInnen-KI analysiert den Kontext...</p>
                     </div>
                  ) : currentQuestion ? (
                     <div className="space-y-10">

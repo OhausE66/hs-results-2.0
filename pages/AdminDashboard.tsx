@@ -224,7 +224,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setView, user })
           </div>
 
           <div className="flex space-x-2 mb-10 bg-white/5 p-1 rounded-2xl w-fit border border-white/10">
-            <button onClick={() => setActiveTab('consultants')} className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'consultants' ? 'bg-hs-orange text-white' : 'text-slate-400 hover:text-white'}`}>Berater</button>
+            <button onClick={() => setActiveTab('consultants')} className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'consultants' ? 'bg-hs-orange text-white' : 'text-slate-400 hover:text-white'}`}>BeraterInnen</button>
             <button onClick={() => setActiveTab('assets')} className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'assets' ? 'bg-hs-orange text-white' : 'text-slate-400 hover:text-white'}`}>Cloud Assets</button>
             <button onClick={() => setActiveTab('system')} className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'system' ? 'bg-hs-orange text-white' : 'text-slate-400 hover:text-white'}`}>Sicherheit & Regeln</button>
           </div>
@@ -232,7 +232,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setView, user })
           {activeTab === 'consultants' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold uppercase">Berater-Profile ({consultants.length})</h3>
+                <h3 className="text-xl font-bold uppercase">BeraterInnen-Profile ({consultants.length})</h3>
                 <button 
                   onClick={() => { setFormData(INITIAL_FORM); setIsModalOpen(true); }}
                   className="flex items-center space-x-2 bg-hs-blue hover:bg-hs-orange px-6 py-3 rounded-xl transition-all font-black text-xs uppercase shadow-lg"
@@ -371,7 +371,7 @@ service firebase.storage {
                   <div className="p-3 bg-hs-blue rounded-2xl">
                      <User size={24} />
                   </div>
-                  <h3 className="text-2xl font-black uppercase tracking-tight">{formData.id ? 'Berater bearbeiten' : 'Neuen Berater anlegen'}</h3>
+                  <h3 className="text-2xl font-black uppercase tracking-tight">{formData.id ? 'BeraterIn bearbeiten' : 'Neue/n BeraterIn anlegen'}</h3>
                </div>
                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-red-500 rounded-full transition-colors">
                   <X size={24} />

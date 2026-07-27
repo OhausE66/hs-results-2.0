@@ -157,7 +157,7 @@ export const Home: React.FC<HomeProps> = ({ setView, user }) => {
       return;
     }
 
-    const content = `BERATERPROFIL: ${c.name}\n${c.title}\n--------------------------------------------------\nKONTAKT\nEmail: ${c.email}\nPhone: ${c.phone}\nAddresse: ${c.address}\n\nFOKUS & MISSION\n"${c.intro}"\n\nEXPERTISE\n${c.focus.map(f => `- ${f}`).join('\n')}\n\nKUNDEN\n${c.customers.join(', ')}\n\nHS-RESULTS: Das Ergebnis zählt.\nwww.hs-results.com`;
+    const content = `BERATERINNENPROFIL: ${c.name}\n${c.title}\n--------------------------------------------------\nKONTAKT\nEmail: ${c.email}\nPhone: ${c.phone}\nAddresse: ${c.address}\n\nFOKUS & MISSION\n"${c.intro}"\n\nEXPERTISE\n${c.focus.map(f => `- ${f}`).join('\n')}\n\nKUNDEN\n${c.customers.join(', ')}\n\nHS-RESULTS: Das Ergebnis zählt.\nwww.hs-results.com`;
     const element = document.createElement("a");
     const file = new Blob([content], {type: 'text/plain'});
     element.href = URL.createObjectURL(file);
@@ -200,7 +200,7 @@ export const Home: React.FC<HomeProps> = ({ setView, user }) => {
        </div>
 
        <div className="flex space-x-2 mb-10 bg-white/5 p-1 rounded-2xl w-fit border border-white/10">
-          <button onClick={() => setAdminTab('consultants')} className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${adminTab === 'consultants' ? 'bg-hs-orange text-white' : 'text-slate-400 hover:text-white'}`}>Berater</button>
+          <button onClick={() => setAdminTab('consultants')} className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${adminTab === 'consultants' ? 'bg-hs-orange text-white' : 'text-slate-400 hover:text-white'}`}>BeraterInnen</button>
           <button onClick={() => setAdminTab('assets')} className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${adminTab === 'assets' ? 'bg-hs-orange text-white' : 'text-slate-400 hover:text-white'}`}>Cloud Assets</button>
           <button onClick={() => setAdminTab('system')} className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${adminTab === 'system' ? 'bg-hs-orange text-white' : 'text-slate-400 hover:text-white'}`}>Security Rules</button>
        </div>
@@ -208,7 +208,7 @@ export const Home: React.FC<HomeProps> = ({ setView, user }) => {
        {adminTab === 'consultants' && (
           <div className="space-y-6">
              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold uppercase">Berater-Profile ({consultants.length})</h3>
+                <h3 className="text-xl font-bold uppercase">BeraterInnen-Profile ({consultants.length})</h3>
                 <button className="flex items-center space-x-2 bg-hs-blue hover:bg-hs-orange px-6 py-3 rounded-xl transition-all font-black text-xs uppercase shadow-lg">
                    <Plus size={16} /> <span>Neu anlegen</span>
                 </button>

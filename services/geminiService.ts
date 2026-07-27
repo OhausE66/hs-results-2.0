@@ -1,6 +1,3 @@
-
-// @google/genai initialization and types correctly following guidelines
-import { GoogleGenAI, Type } from "@google/genai";
 import { 
   ChangeToolId, 
   AnalysisResult, 
@@ -10,10 +7,7 @@ import {
   AssessmentResponse 
 } from "../types";
 
-// Always use named parameter for apiKey
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-// Select gemini-3-pro-preview for complex reasoning and organizational analysis tasks
-const modelName = "gemini-3-pro-preview";
+const modelName = "gemini-3.1-pro-preview";
 
 export interface VentureConcept {
   id: string;
@@ -130,56 +124,43 @@ const safeParse = (text: string | undefined) => {
   }
 };
 
+const generateContent = async (params: { model?: string, contents: any, config?: any }) => {
+  const res = await fetch('/api/gemini/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params)
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+};
+
 // --- RESULTA CHAT LOGIC ---
 export const startResultaChat = (lang: 'de' | 'en' = 'de') => {
-  const systemInstruction = `Du bist "Resulta", die sympathische und hochkompetente KI-Begleiterin der Unternehmensberatung hs:results.
-  
-  DEINE PERSÖNLICHKEIT:
-  - Professionell, aber herzlich und empathisch (Senior-Berater-Niveau).
-  - Hilfsbereit und lösungsorientiert.
-  
-  DEIN WISSEN:
-  1. Unsere Tools:
-     - Organisation & Reorg (Audit Ihrer Strukturen). Link: [TOOL:ORGANIZATION_ANALYZER]
-     - Strategie (Klarheit in Märkten). Link: [TOOL:STRATEGY_CLARIFIER]
-     - Unternehmenskultur (Tiefenstruktur-Check). Link: [TOOL:CULTURE_SCANNER]
-     - Führung (Leadership Radar). Link: [TOOL:LEADERSHIP_RADAR]
-     - Veränderung (AI Change Consultant). Link: [TOOL:CHANGE_MANAGER]
-     - VentureForge (Digitale Transformation & Innovation). Link: [TOOL:INNOVATION_IDEATOR]
-     - Reorg Simulator (Simulation von Änderungen). Link: [TOOL:REORG_SIMULATOR]
-  
-  2. Datenschutz & Sicherheit:
-     - Wir hosten auf Google Cloud in der EU (Region Frankfurt).
-     - Volle DSGVO-Konformität.
-     - Daten werden nicht für das Training öffentlicher Modelle verwendet.
-     - Jeder Nutzer hat einen isolierten Datentresor (Intelligence Vault).
-     - Olaf Heger und Andre Stuer bürgen für höchste Diskretion.
-  
-  3. Berater:
-     - Olaf Heger (Essen): Experte für Innovation & moderne Org-Formen.
-     - Andre Stuer (Potsdam): Experte für Strategie & Transformation.
-  
-  REGELN FÜR ANTWORTEN:
-  - Wenn der Nutzer ein Problem beschreibt, empfehle EIN passendes hs:results Tool und verwende EXAKT dieses Format für den Link: [TOOL:VIEW_STATE_NAME].
-  - Antworte auf Deutsch, es sei denn, du wirst auf Englisch gefragt.
-  - Sei präzise beim Thema Datenschutz.
-  
-  BEISPIEL: "Ich empfehle Ihnen unser Organisations-Audit: [TOOL:ORGANIZATION_ANALYZER]"`;
-
-  return ai.chats.create({
-    model: modelName,
-    config: {
-      systemInstruction,
-      temperature: 0.7,
+  return {
+    sendMessage: async ({ message, history }: { message: string, history?: any[] }) => {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message, history, lang }),
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to communicate with chat server');
+      }
+      
+      const data = await res.json();
+      return { text: data.text };
     }
-  });
+  };
 };
 
 // Generate systemic questions
 export const generateSystemicQuestions = async (scenario: string, companyDesc: string, lang: 'de' | 'en' = 'de'): Promise<AssessmentQuestion[]> => {
   const prompt = `Generiere 4 tiefgehende systemische Fragen für dieses Change-Szenario: ${scenario}. Kontext: ${companyDesc}. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. 
   Antworte in JSON: [{id: string, text: string, placeholder: string}]`;
-  const response = await ai.models.generateContent({
+  const response = await generateContent({
     model: modelName,
     contents: prompt,
     config: { responseMimeType: "application/json" }
@@ -190,7 +171,7 @@ export const generateSystemicQuestions = async (scenario: string, companyDesc: s
 // Analyze leadership team
 export const analyzeLeadershipTeam = async (employees: Employee[], toolAnswers: AssessmentResponse[], lang: 'de' | 'en' = 'de'): Promise<string> => {
   const prompt = `Analysiere dieses Führungsteam: ${JSON.stringify(employees)}. Audit-Antworten: ${JSON.stringify(toolAnswers)}. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. Erstelle einen professionellen Bericht.`;
-  const response = await ai.models.generateContent({
+  const response = await generateContent({
     model: modelName,
     contents: prompt
   });
@@ -201,7 +182,7 @@ export const analyzeLeadershipTeam = async (employees: Employee[], toolAnswers: 
 export const generateEmployeeCoaching = async (employee: Employee, lang: 'de' | 'en' = 'de'): Promise<CoachingGuide | null> => {
   const prompt = `Erstelle einen coaching-leitfaden für diesen Mitarbeiter: ${JSON.stringify(employee)}. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. 
   Antworte in JSON: {employeeName: string, focusArea: string, openingQuestion: string, keyPoints: string[], actionPlan: string}`;
-  const response = await ai.models.generateContent({
+  const response = await generateContent({
     model: modelName,
     contents: prompt,
     config: { responseMimeType: "application/json" }
@@ -220,7 +201,7 @@ export const getLeadershipAuditQuestions = (lang: 'de' | 'en' = 'de'): Assessmen
 
 // Progress organizational analysis
 export const processOrgAnalysisStep = async (history: any[], lang: 'de' | 'en' = 'de'): Promise<OrgQuestionState | null> => {
-  const response = await ai.models.generateContent({
+  const response = await generateContent({
     model: modelName,
     contents: history,
     config: { 
@@ -243,7 +224,7 @@ export const processOrgAnalysisStep = async (history: any[], lang: 'de' | 'en' =
 
 // Progress reorg step
 export const processReorgStep = async (history: any[], lang: 'de' | 'en' = 'de'): Promise<ReorgQuestionState | null> => {
-  const response = await ai.models.generateContent({
+  const response = await generateContent({
     model: modelName,
     contents: history,
     config: { 
@@ -272,7 +253,7 @@ export const generateCultureHypotheses = async (stories: any, lang: 'de' | 'en' 
   Antworte STRENG im JSON-Format als Array mit dieser Struktur: 
   [{"id": "h1", "text": "Hypothesen-Text", "reasoning": "Kurze systemische Begründung"}]`;
   
-  const response = await ai.models.generateContent({
+  const response = await generateContent({
     model: modelName,
     contents: prompt,
     config: { responseMimeType: "application/json" }
@@ -287,7 +268,7 @@ export const generateCultureGoals = async (context: any, lang: 'de' | 'en' = 'de
   Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. 
   Antworte STRENG im JSON-Format als einfaches Array von Strings: ["Richtung 1", "Richtung 2", "Richtung 3"]`;
   
-  const response = await ai.models.generateContent({
+  const response = await generateContent({
     model: modelName,
     contents: prompt,
     config: { responseMimeType: "application/json" }
@@ -324,7 +305,7 @@ export const generateCultureAnalysisPlan = async (stories: any, ratings: any[], 
     ]
   }`;
 
-  const response = await ai.models.generateContent({
+  const response = await generateContent({
     model: modelName,
     contents: prompt,
     config: { responseMimeType: "application/json" }
@@ -335,7 +316,7 @@ export const generateCultureAnalysisPlan = async (stories: any, ratings: any[], 
 // Generate strategy options
 export const generateStrategyOptions = async (context: any, lang: 'de' | 'en' = 'de'): Promise<StrategyOption[]> => {
   const prompt = `Generiere 3 Strategie-Optionen. Kontext: ${JSON.stringify(context)}. Sprache: ${lang}. Antworte in JSON: [{id: string, title: string, description: string, opportunity_space: string}]`;
-  const response = await ai.models.generateContent({
+  const response = await generateContent({
     model: modelName,
     contents: prompt,
     config: { responseMimeType: "application/json" }
@@ -354,82 +335,13 @@ export const generateStrategyFinalPlan = async (context: any, selected: Strategy
   
   Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. 
   
-  Antworte STRENG im JSON-Format gemessen am bereitgestellten responseSchema.`;
+  Antworte STRENG im JSON-Format gemessen am bereitgestellten Schema.`;
 
-  const response = await ai.models.generateContent({
+  const response = await generateContent({
     model: modelName,
     contents: prompt,
     config: { 
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          one_page_strategy: {
-            type: Type.OBJECT,
-            properties: {
-              vision_statement: { type: Type.STRING },
-              target_audience: { type: Type.STRING },
-              unique_value_proposition: { type: Type.STRING }
-            },
-            required: ["vision_statement", "target_audience", "unique_value_proposition"]
-          },
-          implementation: {
-            type: Type.OBJECT,
-            properties: {
-              decision_logic: { type: Type.STRING },
-              main_focus: { type: Type.STRING },
-              initiative_portfolio: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    name: { type: Type.STRING },
-                    priority: { type: Type.STRING },
-                    impact: { type: Type.STRING }
-                  },
-                  required: ["name", "priority", "impact"]
-                }
-              },
-              kpi_framework: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    kpi: { type: Type.STRING },
-                    target: { type: Type.STRING }
-                  },
-                  required: ["kpi", "target"]
-                }
-              }
-            },
-            required: ["decision_logic", "main_focus", "initiative_portfolio", "kpi_framework"]
-          },
-          roadmap: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                phase: { type: Type.STRING },
-                timing: { type: Type.STRING },
-                milestones: { type: Type.ARRAY, items: { type: Type.STRING } }
-              },
-              required: ["phase", "timing", "milestones"]
-            }
-          },
-          risks: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                risk: { type: Type.STRING },
-                mitigation: { type: Type.STRING }
-              },
-              required: ["risk", "mitigation"]
-            }
-          }
-        },
-        required: ["one_page_strategy", "implementation", "roadmap", "risks"]
-      }
+      responseMimeType: "application/json"
     }
   });
   return safeParse(response.text);
@@ -438,7 +350,7 @@ export const generateStrategyFinalPlan = async (context: any, selected: Strategy
 // Generate venture forge concepts
 export const generateVentureConcepts = async (dna: any, lang: 'de' | 'en' = 'de'): Promise<VentureConcept[]> => {
   const prompt = `Generiere 3 innovative Venture-Konzepte für: ${JSON.stringify(dna)}. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. Antworte STRENG im JSON-Format.`;
-  const response = await ai.models.generateContent({
+  const response = await generateContent({
     model: modelName,
     contents: prompt,
     config: { responseMimeType: "application/json", temperature: 0.9 }
@@ -449,7 +361,7 @@ export const generateVentureConcepts = async (dna: any, lang: 'de' | 'en' = 'de'
 // Deep Dive into a specific Venture Concept
 export const generateVentureDeepDive = async (concept: VentureConcept, dna: any, lang: 'de' | 'en' = 'de'): Promise<VentureDeepDive | null> => {
   const prompt = `Erstelle eine detaillierte Deep-Dive-Analyse für: ${concept.name}. Kontext: ${JSON.stringify(dna)}. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. Antworte in JSON.`;
-  const response = await ai.models.generateContent({
+  const response = await generateContent({
     model: modelName,
     contents: prompt,
     config: { responseMimeType: "application/json" }
@@ -461,8 +373,8 @@ export const generateVentureDeepDive = async (concept: VentureConcept, dna: any,
 export const summarizeFileContent = async (fileName: string, contentSnippet: string, lang: 'de' | 'en' = 'de'): Promise<string> => {
   const prompt = `Fasse den Inhalt dieses Dokuments ("${fileName}") prägnant in 2-3 Sätzen zusammen. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. Dokument-Ausschnitt: ${contentSnippet}`;
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+    const response = await generateContent({
+      model: 'gemini-3.6-flash',
       contents: prompt,
     });
     return response.text || "Zusammenfassung nicht verfügbar.";
@@ -543,7 +455,7 @@ export const generateChangeAnalysis = async (
   }`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContent({
       model: modelName,
       contents: prompt,
       config: { responseMimeType: "application/json" }

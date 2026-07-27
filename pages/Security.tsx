@@ -3,7 +3,7 @@ import { ViewState } from '../types';
 import { 
   ChevronLeft, ShieldCheck, Lock, Server, Globe, 
   EyeOff, UserCheck, ShieldAlert, Cpu, Database, 
-  CheckCircle2, FileCheck
+  CheckCircle2, FileCheck, Scale
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -22,6 +22,12 @@ export const Security: React.FC<SecurityProps> = ({ setView }) => {
       accent: "hs-blue"
     },
     {
+      title: language === 'de' ? "EU AI Act" : "EU AI Act Compliance",
+      desc: language === 'de' ? "Transparenzpflichten, klare Risikoklassifizierung und Governance nach dem neuen KI-Gesetz." : "Transparency obligations, clear risk classification, and governance according to the new AI Act.",
+      icon: Scale,
+      accent: "hs-accent"
+    },
+    {
       title: language === 'de' ? "EU-Hosting" : "EU Hosting",
       desc: language === 'de' ? "Datenverarbeitung auf Servern in der EU (keine unnötigen Drittlandtransfers)." : "Data processing on servers in the EU (no unnecessary third-country transfers).",
       icon: Server,
@@ -31,7 +37,7 @@ export const Security: React.FC<SecurityProps> = ({ setView }) => {
       title: language === 'de' ? "Verschlüsselung" : "Encryption",
       desc: language === 'de' ? "TLS bei der Übertragung, Verschlüsselung im Ruhezustand; optional Ende-zu-Ende für sensible Inhalte." : "TLS during transmission, encryption at rest; optional end-to-end for sensitive content.",
       icon: Lock,
-      accent: "hs-accent"
+      accent: "hs-blue"
     },
     {
       title: language === 'de' ? "Zugriffsschutz" : "Access Protection",
@@ -44,12 +50,6 @@ export const Security: React.FC<SecurityProps> = ({ setView }) => {
       desc: language === 'de' ? "Regelmäßige Audits, Patch-Management und Incident-Response-Prozesse." : "Regular audits, patch management, and incident response processes.",
       icon: ShieldAlert,
       accent: "hs-orange"
-    },
-    {
-      title: language === 'de' ? "Keine Drittweitergabe" : "No Third-Party Sharing",
-      desc: language === 'de' ? "Kein Datenverkauf. Dienstleister nur als geprüfte Auftragsverarbeiter mit AV-Vertrag." : "No data sale. Service providers only as vetted order processors with DPA.",
-      icon: EyeOff,
-      accent: "hs-blue"
     }
   ];
 
@@ -127,7 +127,7 @@ export const Security: React.FC<SecurityProps> = ({ setView }) => {
         <div className="mb-32">
           <div className="flex flex-col items-center text-center mb-16 space-y-4">
             <h2 className="text-4xl font-black text-hs-blue uppercase tracking-tight">{language === 'de' ? 'Datenschutz & Security – verlässlich umgesetzt' : 'Data Privacy & Security – reliably implemented'}</h2>
-            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.4em]">{language === 'de' ? 'Unsere 6 Säulen der Informationssicherheit' : 'Our 6 pillars of information security'}</p>
+            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.4em]">{language === 'de' ? 'Unsere Sicherheits- & Compliance-Säulen' : 'Our Security & Compliance Pillars'}</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -160,7 +160,7 @@ export const Security: React.FC<SecurityProps> = ({ setView }) => {
                    <p className="text-lg font-bold text-hs-accent">{language === 'de' ? 'Sie behalten die volle Kontrolle.' : 'You maintain full control.'}</p>
                    <p className="text-slate-300 text-sm leading-relaxed">
                       {language === 'de' 
-                        ? 'Jeder Datenupload, jede KI-Analyse und jedes Beraterprofil wird in isolierten Sicherheitscontainern verwaltet. Wir nutzen modernste Infrastruktur, um sicherzustellen, dass keine Datenmischung stattfindet.'
+                        ? 'Jeder Datenupload, jede KI-Analyse und jedes BeraterInnenprofil wird in isolierten Sicherheitscontainern verwaltet. Wir nutzen modernste Infrastruktur, um sicherzustellen, dass keine Datenmischung stattfindet.'
                         : 'Every data upload, AI analysis, and consultant profile is managed in isolated security containers. We use state-of-the-art infrastructure to ensure no data mixing occurs.'}
                    </p>
                 </div>

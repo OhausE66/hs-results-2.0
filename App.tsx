@@ -101,7 +101,7 @@ const AppContent: React.FC = () => {
 
     try {
       if (!chatSessionRef.current) chatSessionRef.current = startResultaChat(language as any);
-      const result = await chatSessionRef.current.sendMessage({ message: userText });
+      const result = await chatSessionRef.current.sendMessage({ message: userText, history: chatMessages });
       setChatMessages(prev => [...prev, { role: 'bot', text: result.text }]);
     } catch (err) {
       console.error("Chat Error:", err);
