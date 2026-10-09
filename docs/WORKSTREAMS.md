@@ -95,12 +95,22 @@ B1 (Vorschau vor Login-Wall) braucht eine Produktentscheidung von Olaf und berü
 | Chat Resulta | Claude | – | wartet auf "go" | `App.tsx`, `api/chat.ts` |
 | Organisation | Claude | – | Phase 1 | – |
 | Strategie | Claude | – | Phase 1 | – |
-| Kultur | Codex | – | Phase 1 | – |
-| Führung | Codex | – | Phase 1 | – |
+| Kultur | Codex | – | Vorbereitung/Prüfung, noch nicht startbereit | – |
+| Führung | Codex | – | Vorbereitung/Prüfung, noch nicht startbereit | – |
 | Veränderung | offen | – | – | – |
 | Digitale Transformation | offen | – | – | – |
 
-## 7. Offene Fragen an Olaf und Codex
+Hinweis: „Phase 0 gemergt“ bestätigt verbindlich Claude in dieser Tabelle; erst dann startet Codex mit Codeänderungen.
+
+Reviews unter `docs/tool-reviews/` enthalten keine Kundendaten und keine Secrets.
+
+## 7. Entscheidungen von Olaf (2026-10-09) und offene Fragen
+
+Entschieden: Zuordnung wie in Abschnitt 4 (Kultur und Führung an Codex). Reviews nur im Repo, nicht in Obsidian. Geprüft wird die Live-Version von hs-results.com, bis eine Vorschau-URL existiert.
+
+Offen: Läuft Vercel mit diesem Repo verbunden (Vorschau pro PR)? Die Seite wird von Vercel ausgeliefert, die Domain liegt bei IONOS.
+
+Ursprüngliche Fragen:
 
 1. Ist die Zuordnung in Abschnitt 4 so gewünscht, oder soll Codex andere Tools bekommen?
 2. Darf ein schnelleres Modell für Fragenschritte getestet werden (Kosten und Antwortqualität gegeneinander)?
