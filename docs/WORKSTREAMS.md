@@ -81,7 +81,7 @@ B1 (Vorschau vor Login-Wall) braucht eine Produktentscheidung von Olaf und berü
 ## 5. Spielregeln
 
 - `main` ist immer lauffähig. Nur ein offener PR pro Agent.
-- Vor jedem Push: `npm run build`. Sobald Phase 0, Punkt 4 steht: zusätzlich `typecheck`.
+- Vor jedem Push: `npm run typecheck` und `npm run build`.
 - Nicht ohne ausdrückliches "go" von Olaf nach `main` mergen.
 - Prompts und Bewertungslogik eines Tools nur ändern, wenn der Auftrag es ausdrücklich verlangt. Reine UX-Änderungen und Prompt-Änderungen getrennt in eigenen PRs.
 - Branch-Namen: `claude/<tool>-<thema>` bzw. `codex/<tool>-<thema>`.
