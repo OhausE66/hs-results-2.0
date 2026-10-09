@@ -27,6 +27,7 @@ import { ViewState, OrgContext, FileRecord } from './types';
 import { auth, onAuthStateChanged, db, collection, onSnapshot } from './services/firebase';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { startResultaChat } from './services/geminiService';
+import { ChatMessage } from './components/ChatMessage';
 import { 
   Loader2, Sparkles, Layout, Compass, MessageCircle, Users, Cpu, 
   Rocket, ChevronRight, Activity, X, Send, User, Bot, ArrowRight, ShieldCheck 
@@ -111,26 +112,13 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const renderMessageContent = (text: string) => {
-    // Regex to find [TOOL:VIEW_STATE] markers
-    const parts = text.split(/(\[TOOL:[A-Z_]+\])/g);
-    return parts.map((part, i) => {
-      const match = part.match(/\[TOOL:([A-Z_]+)\]/);
-      if (match) {
-        const toolId = match[1] as ViewState;
-        return (
-          <button 
-            key={i}
-            onClick={() => { setView(toolId); setIsChatOpen(false); }}
-            className="inline-flex items-center px-3 py-1.5 my-1 mx-1 bg-hs-orange/10 border border-hs-orange/30 text-hs-orange rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-hs-orange hover:text-white transition-all shadow-sm"
-          >
-            Zum Tool: {toolId.replace(/_/g, ' ')} <ArrowRight size={12} className="ml-1" />
-          </button>
-        );
-      }
-      return <span key={i}>{part}</span>;
-    });
-  };
+  const renderMessageContent = (text: string) => (
+    <ChatMessage
+      text={text}
+      lang={language as 'de' | 'en'}
+      onOpenTool={(toolId) => { setView(toolId); setIsChatOpen(false); }}
+    />
+  );
 
   if (authLoading) {
     return (
