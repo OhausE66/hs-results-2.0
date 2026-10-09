@@ -9,6 +9,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { Auth } from '../components/Auth';
 import { saveProjectSession } from '../services/firebase';
 import { OrgContextForm } from '../components/OrgContextForm';
+import { AiWaiting } from '../components/AiWaiting';
 
 interface OrganizationAnalyzerProps {
   user: any;
@@ -386,10 +387,12 @@ ${(finalResult.optimization_proposals?.long_term || []).map(p => `- ${p}`).join(
                     </div>
                  </div>
                  {loading ? (
-                    <div className="py-20 text-center">
-                       <Loader2 size={48} className="animate-spin mx-auto text-hs-blue mb-6" />
-                       <p className="font-black text-hs-blue uppercase animate-pulse">BeraterInnen-KI analysiert den Kontext...</p>
-                    </div>
+                    <AiWaiting
+                       messages={language === 'de'
+                         ? ['Ihre Antwort wird ausgewertet …', 'Muster in Ihrer Organisation werden verknüpft …', 'Die nächste Frage wird formuliert …']
+                         : ['Evaluating your answer …', 'Connecting patterns in your organization …', 'Formulating the next question …']}
+                       hint={language === 'de' ? 'Das dauert meist 15–30 Sekunden.' : 'This usually takes 15–30 seconds.'}
+                    />
                  ) : currentQuestion ? (
                     <div className="space-y-10">
                        <h3 className="text-3xl font-black text-hs-blue leading-tight">{currentQuestion.text}</h3>
