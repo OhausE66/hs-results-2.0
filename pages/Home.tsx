@@ -316,6 +316,25 @@ export const Home: React.FC<HomeProps> = ({ setView, user }) => {
         </div>
       </section>
 
+      {/* LEAPCOACH BANNER */}
+      <section className="bg-hs-blue py-10 no-print">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div>
+            <p className="text-hs-orange font-black uppercase tracking-[0.3em] text-xs mb-2">{t('home.leapcoach.label')}</p>
+            <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-2">{t('home.leapcoach.title')}</h2>
+            <p className="text-slate-200 max-w-2xl">{t('home.leapcoach.desc')}</p>
+          </div>
+          <a
+            href="https://my.leapcoach.ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-hs-orange text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-white hover:text-hs-blue transition-all shadow-xl whitespace-nowrap self-start md:self-auto"
+          >
+            {t('home.leapcoach.cta')}
+          </a>
+        </div>
+      </section>
+
       {/* SOLUTIONS SECTION */}
       <section className="py-32 bg-slate-50 no-print">
         <div className="max-w-7xl mx-auto px-4 mb-20">
