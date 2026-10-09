@@ -8,6 +8,10 @@ import {
 } from "../types";
 
 const modelName = "gemini-3.1-pro-preview";
+// Schnelles Modell für Zwischenfragen im Frage-Antwort-Fluss (ca. 3x schneller laut Messung vom 2026-10-09).
+// Der Abschlussbericht läuft weiter über das Pro-Modell.
+const fastModelName = "gemini-3-flash-preview";
+const QUESTIONS_BEFORE_RESULT = 4;
 
 export interface VentureConcept {
   id: string;
@@ -124,6 +128,26 @@ const safeParse = (text: string | undefined) => {
   }
 };
 
+// Führt einen Schritt eines Frage-Antwort-Flusses aus: Zwischenfragen mit dem schnellen Modell,
+// der Abschluss (nach 4 Antworten) mit dem Pro-Modell. Liefert das schnelle Modell kein
+// brauchbares Format, wird einmal mit dem Pro-Modell wiederholt.
+const runQuestionStep = async (history: any[], config: any) => {
+  const answers = history.filter(m => m.role === 'user').length - 1;
+  const isFinalStep = answers >= QUESTIONS_BEFORE_RESULT;
+  const run = async (model: string) => {
+    const response = await generateContent({ model, contents: history, config });
+    return safeParse(response.text);
+  };
+  if (isFinalStep) return run(modelName);
+  try {
+    const fast = await run(fastModelName);
+    if (fast && (fast.next_question?.text || fast.final_result)) return fast;
+  } catch (e) {
+    console.error("Fast model failed, falling back to Pro:", e);
+  }
+  return run(modelName);
+};
+
 export const generateContent = async (params: { model?: string, contents: any, config?: any }) => {
   const res = await fetch('/api/gemini/generate', {
     method: 'POST',
@@ -201,10 +225,7 @@ export const getLeadershipAuditQuestions = (lang: 'de' | 'en' = 'de'): Assessmen
 
 // Progress organizational analysis
 export const processOrgAnalysisStep = async (history: any[], lang: 'de' | 'en' = 'de'): Promise<OrgQuestionState | null> => {
-  const response = await generateContent({
-    model: modelName,
-    contents: history,
-    config: { 
+  return runQuestionStep(history, { 
         responseMimeType: "application/json",
         systemInstruction: `Du bist ein Senior Management Consultant bei hs:results. Deine Aufgabe ist es, ein tiefgehendes Organisations-Audit durchzuführen. 
         
@@ -217,17 +238,12 @@ export const processOrgAnalysisStep = async (history: any[], lang: 'de' | 'en' =
         6. Rückgabeformat bei Endergebnis: { "final_result": { "executive_summary": "...", "maturity_score": 0-100, "strengths": ["..."], "weaknesses": ["..."], "optimization_proposals": { "short_term": ["..."], "long_term": ["..."] } } }
         
         WICHTIG: Antworte AUSSCHLIESSLICH im JSON-Format. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}.`
-    }
-  });
-  return safeParse(response.text);
+    });
 };
 
 // Progress reorg step
 export const processReorgStep = async (history: any[], lang: 'de' | 'en' = 'de'): Promise<ReorgQuestionState | null> => {
-  const response = await generateContent({
-    model: modelName,
-    contents: history,
-    config: { 
+  return runQuestionStep(history, { 
         responseMimeType: "application/json",
         systemInstruction: `Du bist ein Experte für Reorganisation und Transformation. Du begleitest den Nutzer durch eine Simulation von Strukturveränderungen.
         
@@ -240,9 +256,7 @@ export const processReorgStep = async (history: any[], lang: 'de' | 'en' = 'de')
         6. Rückgabeformat bei Endergebnis: { "final_result": { "impact_analysis": { "title": "...", "description": "..." }, "diagnosis": { "key_assumptions": ["..."] }, "roadmap_30_60_90": { "day_30": ["..."], "day_60": ["..."], "day_90": ["..."] }, "risk_register": [{ "risk": "...", "early_signals": ["..."], "mitigations": ["..."] }], "communication_plan": { "talktracks": [{ "audience": "...", "core_message": "...", "faq_samples": [{ "q": "...", "a": "..." }] }] } } }
         
         WICHTIG: Antworte AUSSCHLIESSLICH im JSON-Format. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}.`
-    }
-  });
-  return safeParse(response.text);
+    });
 };
 
 // Generate culture hypotheses
