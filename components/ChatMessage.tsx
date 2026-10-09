@@ -77,9 +77,11 @@ const renderBlocks = (text: string): React.ReactNode[] => {
 export const ChatMessage: React.FC<ChatMessageProps> = ({ text, lang, onOpenTool }) => {
   const toolIds: string[] = [];
   let wantsContact = false;
+  let wantsLeapCoach = false;
 
   const body = text
     .replace(/\[TOOL:([A-Z_]+)\]/g, (_m, id) => { if (!toolIds.includes(id)) toolIds.push(id); return ''; })
+    .replace(/\[LINK:LEAPCOACH\]/g, () => { wantsLeapCoach = true; return ''; })
     .replace(/\[CTA:ERSTGESPRAECH\]/g, () => { wantsContact = true; return ''; })
     .trim();
 
@@ -88,7 +90,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ text, lang, onOpenTool
   return (
     <div>
       {renderBlocks(body)}
-      {(toolIds.length > 0 || wantsContact) && (
+      {(toolIds.length > 0 || wantsContact || wantsLeapCoach) && (
         <div className="flex flex-wrap gap-2 mt-3">
           {toolIds.map(id => (
             <button
@@ -99,6 +101,16 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ text, lang, onOpenTool
               {lang === 'en' ? 'To tool: ' : 'Zum Tool: '}{TOOL_LABELS[id]?.[lang] ?? id.replace(/_/g, ' ')} <ArrowRight size={12} className="ml-1" />
             </button>
           ))}
+          {wantsLeapCoach && (
+            <a
+              href="https://leapcoach.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-3 py-1.5 bg-hs-orange text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-hs-blue transition-all shadow-sm"
+            >
+              {lang === 'en' ? 'Discover LeapCoach' : 'LeapCoach entdecken'} <ArrowRight size={12} className="ml-1" />
+            </a>
+          )}
           {wantsContact && (
             <a
               href={`mailto:${CONTACT_MAIL}?subject=${subject}`}
