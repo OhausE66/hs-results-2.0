@@ -9,6 +9,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { Auth } from '../components/Auth';
 import { saveProjectSession } from '../services/firebase';
 import { OrgContextForm } from '../components/OrgContextForm';
+import { AiWaiting } from '../components/AiWaiting';
 
 type Step = 'LANDING' | 'ORG_CONTEXT' | 'STORIES' | 'HYPOTHESES' | 'GOAL' | 'RESULT';
 
@@ -120,9 +121,11 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
         result.forEach(h => initialRatings[h.id] = 3);
         setRatings(initialRatings);
         setStep('HYPOTHESES');
+      } else {
+        setApiError(language === 'de' ? 'Die KI hat keine Hypothesen geliefert.' : 'The AI did not return any hypotheses.');
       }
     } catch (error) {
-      setApiError("Fehler bei der Hypothesen-Generierung.");
+      setApiError(language === 'de' ? 'Fehler bei der Hypothesen-Generierung.' : 'Could not generate hypotheses.');
     } finally {
       setLoading(false);
     }
@@ -130,6 +133,7 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
 
   const startGoalGeneration = async () => {
     setLoadingGoals(true);
+    setApiError(null);
     try {
       const fullContext = {
         ...stories,
@@ -140,9 +144,11 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
       if (result && result.length > 0) {
         setDynamicDirections(result);
         setStep('GOAL');
+      } else {
+        setApiError(language === 'de' ? 'Die KI hat keine strategischen Zielrichtungen geliefert.' : 'The AI did not return any strategic directions.');
       }
     } catch (error) {
-      setApiError("KI konnte keine strategischen Ziele erstellen.");
+      setApiError(language === 'de' ? 'KI konnte keine strategischen Ziele erstellen.' : 'The AI could not create strategic directions.');
     } finally {
       setLoadingGoals(false);
     }
@@ -150,6 +156,7 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
 
   const generateFinal = async () => {
     setLoading(true);
+    setApiError(null);
     try {
       const formattedRatings = hypotheses.map(h => ({ text: h.text, rating: ratings[h.id] }));
       const fullContext = { ...stories, organization: orgInfo };
@@ -157,13 +164,33 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
       if (result) {
         setAnalysis(result);
         setStep('RESULT');
+      } else {
+        setApiError(language === 'de' ? 'Die KI hat keinen Analyseplan geliefert.' : 'The AI did not return an analysis plan.');
       }
     } catch (error) {
-      setApiError("KI Scan konnte nicht abgeschlossen werden.");
+      setApiError(language === 'de' ? 'KI-Scan konnte nicht abgeschlossen werden.' : 'The AI scan could not be completed.');
     } finally {
       setLoading(false);
     }
   };
+
+  const renderApiError = (retry: () => void) => apiError && (
+    <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-800" role="alert">
+      <div className="flex items-start gap-3">
+        <AlertCircle size={20} className="mt-0.5 flex-shrink-0" />
+        <div className="flex-grow">
+          <p className="font-bold">{apiError}</p>
+          <button
+            onClick={retry}
+            className="mt-3 inline-flex items-center rounded-full bg-red-700 px-4 py-2 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-red-800"
+          >
+            <RefreshCw size={14} className="mr-2" />
+            {language === 'de' ? 'Erneut versuchen' : 'Try again'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   const renderLanding = () => (
     <div className="max-w-6xl mx-auto py-12 animate-fade-in px-4">
@@ -201,6 +228,12 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
   const renderStories = () => (
     <div className="max-w-4xl mx-auto py-12 animate-fade-in px-4">
       <div className="bg-white p-10 rounded-3xl shadow-xl border border-slate-100">
+        {loading ? <AiWaiting
+          messages={language === 'de'
+            ? ['Schritt 1 von 3: Ihre Geschichten werden ausgewertet …', 'Schritt 1 von 3: Kulturelle Muster werden erkannt …', 'Schritt 1 von 3: Hypothesen werden formuliert …']
+            : ['Step 1 of 3: Evaluating your stories …', 'Step 1 of 3: Identifying cultural patterns …', 'Step 1 of 3: Formulating hypotheses …']}
+          hint={language === 'de' ? 'Das dauert meist 15–30 Sekunden.' : 'This usually takes 15–30 seconds.'}
+        /> : <>
         <h2 className="text-3xl font-black text-hs-blue uppercase mb-8">Kulturelle Erzählungen</h2>
         <div className="space-y-6">
           <div>
@@ -238,7 +271,9 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
             {loading ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" />}
             Hypothesen generieren
           </button>
+          {renderApiError(startHypothesesGeneration)}
         </div>
+        </>}
       </div>
     </div>
   );
@@ -246,6 +281,12 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
   const renderHypotheses = () => (
     <div className="max-w-4xl mx-auto py-12 animate-fade-in px-4">
       <div className="bg-white p-10 rounded-3xl shadow-xl border border-slate-100">
+        {loadingGoals ? <AiWaiting
+          messages={language === 'de'
+            ? ['Schritt 2 von 3: Ihre Bewertungen werden ausgewertet …', 'Schritt 2 von 3: Mögliche Zielrichtungen werden entwickelt …', 'Schritt 2 von 3: Strategische Optionen werden formuliert …']
+            : ['Step 2 of 3: Evaluating your ratings …', 'Step 2 of 3: Developing possible directions …', 'Step 2 of 3: Formulating strategic options …']}
+          hint={language === 'de' ? 'Das dauert meist 15–30 Sekunden.' : 'This usually takes 15–30 seconds.'}
+        /> : <>
         <h2 className="text-3xl font-black text-hs-blue uppercase mb-2">Kultur-Hypothesen</h2>
         <p className="text-slate-500 mb-8">Wie zutreffend sind diese Beobachtungen? (1 = gar nicht, 5 = absolut)</p>
         <div className="space-y-8 mb-10">
@@ -273,6 +314,8 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
           {loadingGoals ? <Loader2 className="animate-spin mr-2" /> : <Target className="mr-2" />}
           Strategische Zielrichtungen finden
         </button>
+        {renderApiError(startGoalGeneration)}
+        </>}
       </div>
     </div>
   );
@@ -280,6 +323,12 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
   const renderGoal = () => (
     <div className="max-w-4xl mx-auto py-12 animate-fade-in px-4">
       <div className="bg-white p-10 rounded-3xl shadow-xl border border-slate-100">
+        {loading ? <AiWaiting
+          messages={language === 'de'
+            ? ['Schritt 3 von 3: Ihre kulturellen Muster werden zusammengeführt …', 'Schritt 3 von 3: Strategische Hebel werden abgeleitet …', 'Schritt 3 von 3: Ihr Analyseplan wird erstellt …']
+            : ['Step 3 of 3: Combining your cultural patterns …', 'Step 3 of 3: Deriving strategic levers …', 'Step 3 of 3: Creating your analysis plan …']}
+          hint={language === 'de' ? 'Das dauert meist 15–30 Sekunden.' : 'This usually takes 15–30 seconds.'}
+        /> : <>
         <h2 className="text-3xl font-black text-hs-blue uppercase mb-8">Strategischer Fokus</h2>
         <div className="space-y-4 mb-10">
           {dynamicDirections.map((dir, i) => (
@@ -300,6 +349,8 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
           {loading ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle size={20} className="mr-2" />}
           Finalen Kultur-Analyse-Plan erstellen
         </button>
+        {renderApiError(generateFinal)}
+        </>}
       </div>
     </div>
   );
