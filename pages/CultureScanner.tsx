@@ -12,6 +12,7 @@ import { OrgContextForm } from '../components/OrgContextForm';
 import { AiWaiting } from '../components/AiWaiting';
 
 type Step = 'LANDING' | 'ORG_CONTEXT' | 'STORIES' | 'HYPOTHESES' | 'GOAL' | 'RESULT';
+const MIN_STORY_LENGTH = 40;
 
 export const CultureScanner: React.FC<{ user: any, setView: (v: ViewState) => void }> = ({ user, setView }) => {
   const { t, language } = useLanguage();
@@ -42,6 +43,37 @@ export const CultureScanner: React.FC<{ user: any, setView: (v: ViewState) => vo
 
   // Phase 4: Result
   const [analysis, setAnalysis] = useState<CultureAnalysisResult | null>(null);
+
+  const canContinueStories = [stories.success, stories.mistakes, stories.conflicts]
+    .every(story => story.trim().length >= MIN_STORY_LENGTH);
+
+  const goBack = () => {
+    const previousSteps: Partial<Record<Step, Step>> = {
+      ORG_CONTEXT: 'LANDING',
+      STORIES: 'ORG_CONTEXT',
+      HYPOTHESES: 'STORIES',
+      GOAL: 'HYPOTHESES',
+      RESULT: 'GOAL'
+    };
+    const previousStep = previousSteps[step];
+    if (previousStep) {
+      setApiError(null);
+      setStep(previousStep);
+    }
+  };
+
+  const restartFlow = () => {
+    setStep('LANDING');
+    setOrgInfo(null);
+    setStories({ success: '', mistakes: '', conflicts: '' });
+    setHypotheses([]);
+    setRatings({});
+    setSelectedDirection('');
+    setDynamicDirections([]);
+    setAnalysis(null);
+    setApiError(null);
+    setSaveStatus('idle');
+  };
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -110,7 +142,7 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
   };
 
   const startHypothesesGeneration = async () => {
-    if (!stories.success || !stories.mistakes) return;
+    if (!canContinueStories) return;
     setLoading(true);
     setApiError(null);
     try {
@@ -238,35 +270,44 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
         <h2 className="text-3xl font-black text-hs-blue uppercase mb-8">{tr('Kulturelle Erzählungen', 'Cultural stories')}</h2>
         <div className="space-y-6">
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">{tr('Erfolgsgeschichte: Was macht uns stolz?', 'Success story: What makes us proud?')}</label>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">{tr('Erfolgsgeschichte: Was macht uns stolz? (Pflichtfeld)', 'Success story: What makes us proud? (Required)')}</label>
+            <p className="text-sm text-slate-500 mb-2">{tr('Beschreiben Sie eine konkrete Situation in 2–3 Sätzen (mindestens 40 Zeichen).', 'Describe one specific situation in 2–3 sentences (at least 40 characters).')}</p>
             <textarea 
               value={stories.success} 
               onChange={e => setStories({...stories, success: e.target.value})} 
               className="w-full h-32 p-4 rounded-2xl border-2 border-slate-100 outline-none" 
               placeholder={tr('Beschreiben Sie eine Situation, die typisch für unseren Erfolg ist...', 'Describe a situation that is typical of our success...')}
+              minLength={MIN_STORY_LENGTH}
+              required
             />
           </div>
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">{tr('Umgang mit Fehlern: Was passiert, wenn etwas schiefgeht?', 'Response to mistakes: What happens when something goes wrong?')}</label>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">{tr('Umgang mit Fehlern: Was passiert, wenn etwas schiefgeht? (Pflichtfeld)', 'Response to mistakes: What happens when something goes wrong? (Required)')}</label>
+            <p className="text-sm text-slate-500 mb-2">{tr('Beschreiben Sie eine konkrete Situation in 2–3 Sätzen (mindestens 40 Zeichen).', 'Describe one specific situation in 2–3 sentences (at least 40 characters).')}</p>
             <textarea 
               value={stories.mistakes} 
               onChange={e => setStories({...stories, mistakes: e.target.value})} 
               className="w-full h-32 p-4 rounded-2xl border-2 border-slate-100 outline-none" 
               placeholder={tr('Wie wurde in der Vergangenheit mit einem großen Fehler umgegangen?', 'How was a major mistake handled in the past?')}
+              minLength={MIN_STORY_LENGTH}
+              required
             />
           </div>
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">{tr('Konflikte: Wie werden bei uns Differenzen gelöst?', 'Conflicts: How are differences resolved here?')}</label>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">{tr('Konflikte: Wie werden bei uns Differenzen gelöst? (Pflichtfeld)', 'Conflicts: How are differences resolved here? (Required)')}</label>
+            <p className="text-sm text-slate-500 mb-2">{tr('Beschreiben Sie eine konkrete Situation in 2–3 Sätzen (mindestens 40 Zeichen).', 'Describe one specific situation in 2–3 sentences (at least 40 characters).')}</p>
             <textarea 
               value={stories.conflicts} 
               onChange={e => setStories({...stories, conflicts: e.target.value})} 
               className="w-full h-32 p-4 rounded-2xl border-2 border-slate-100 outline-none" 
               placeholder={tr('Ein Beispiel für eine gelöste (oder ungelöste) Differenz...', 'An example of a resolved (or unresolved) difference...')}
+              minLength={MIN_STORY_LENGTH}
+              required
             />
           </div>
           <button 
             onClick={startHypothesesGeneration} 
-            disabled={loading || !stories.success || !stories.mistakes} 
+            disabled={loading || !canContinueStories}
             className="w-full bg-hs-blue text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg flex items-center justify-center"
           >
             {loading ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" />}
@@ -399,6 +440,29 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
             <p className="text-xl text-slate-300 leading-relaxed max-w-3xl relative z-10">{analysis.profile.summary}</p>
          </div>
 
+         <div className="bg-white p-8 rounded-3xl shadow-xl border border-hs-orange/30">
+            <p className="text-xs font-black text-hs-orange uppercase tracking-widest mb-3">{tr('Nächster Schritt', 'Next step')}</p>
+            <h2 className="text-2xl font-black text-hs-blue mb-3">{tr('Vom Kultur-Scan zur Umsetzung', 'Move from the culture scan to implementation')}</h2>
+            <p className="text-slate-600 mb-6">{tr('Besprechen Sie die wichtigsten Hebel in einem unverbindlichen Erstgespräch.', 'Discuss the most important levers in a no-obligation introductory call.')}</p>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <a
+                href="mailto:kontakt@hs-results.com?subject=Erstgespr%C3%A4ch%20Kulturanalyse"
+                className="inline-flex items-center justify-center bg-hs-orange text-white px-6 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-hs-blue transition-all shadow-lg"
+              >
+                <Mail size={18} className="mr-2" />
+                {tr('Erstgespräch vereinbaren', 'Schedule an introductory call')}
+              </a>
+              <button
+                onClick={() => setView(ViewState.STRATEGY_CLARIFIER)}
+                className="inline-flex items-center justify-center border-2 border-hs-blue text-hs-blue px-6 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-hs-blue hover:text-white transition-all"
+              >
+                <ArrowRight size={18} className="mr-2" />
+                {tr('Zum Tool Strategie', 'Open Strategy tool')}
+              </button>
+            </div>
+            <p className="text-sm text-slate-500 mt-5">{tr('Das Tool Strategie passt, wenn Sie aus den kulturellen Hebeln konkrete strategische Entscheidungen ableiten möchten.', 'The Strategy tool fits when you want to turn your cultural levers into concrete strategic decisions.')}</p>
+         </div>
+
          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="bg-white p-8 rounded-3xl shadow-xl border-l-8 border-hs-orange">
                <h3 className="text-xl font-black text-hs-orange uppercase mb-6 flex items-center"><ShieldAlert className="mr-2"/> Shadow Culture</h3>
@@ -491,9 +555,14 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
     <div className="pt-24 pb-20 min-h-screen bg-slate-50 px-4">
       <div className="max-w-7xl mx-auto">
         {step !== 'LANDING' && (
-           <button onClick={() => { setStep('LANDING'); setApiError(null); setAnalysis(null); }} className="mb-6 flex items-center text-slate-400 hover:text-hs-blue transition-colors font-black uppercase text-xs tracking-widest no-print">
-              <ChevronLeft size={16} className="mr-1" /> {t('nav.area_info')}
-           </button>
+           <div className="mb-6 flex items-center justify-between no-print">
+             <button onClick={goBack} className="flex items-center text-slate-400 hover:text-hs-blue transition-colors font-black uppercase text-xs tracking-widest">
+                <ChevronLeft size={16} className="mr-1" /> {tr('Zurück', 'Back')}
+             </button>
+             <button onClick={restartFlow} className="text-slate-400 hover:text-hs-orange transition-colors font-black uppercase text-xs tracking-widest">
+                {tr('Neu starten', 'Start over')}
+             </button>
+           </div>
         )}
         {step === 'LANDING' && renderLanding()}
         {step === 'ORG_CONTEXT' && <OrgContextForm user={user} onComplete={(data) => { setOrgInfo(data); setStep('STORIES'); }} />}
