@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { AiWaiting } from '../components/AiWaiting';
+import { ResultTeaser } from '../components/ResultTeaser';
 import { Auth } from '../components/Auth';
 import { saveProjectSession, db, collection, query, orderBy, onSnapshot } from '../services/firebase';
 import { OrgContextForm } from '../components/OrgContextForm';
@@ -170,6 +171,22 @@ export const ChangeManager: React.FC<ChangeManagerProps> = ({ user, setView, org
         </div>
       </div>
     );
+
+    if (!user) {
+      const d: any = result.data || {};
+      const phases = d.phases?.length || 0;
+      const actions = d.action_plan?.length || 0;
+      const risks = d.risks?.length || 0;
+      return (
+        <ResultTeaser
+          title={tr('Ihr Veränderungs-Bericht ist fertig', 'Your change report is ready')}
+          lead={d.summary || result.summary}
+          locked={language === 'de'
+            ? ['Systemische Diagnose der unsichtbaren Dynamiken', `${phases} Phasen mit Beschreibung`, `${actions} konkrete Maßnahmen mit Priorität und Verantwortlichen`, `${risks} Risiken mit Gegenmaßnahmen und kulturelle Hebel`]
+            : ['Systemic diagnosis of hidden dynamics', `${phases} phases with descriptions`, `${actions} concrete actions with priority and owners`, `${risks} risks with mitigations and cultural levers`]}
+        />
+      );
+    }
 
     const data = result.data || {};
     const phases = data.phases || [];
