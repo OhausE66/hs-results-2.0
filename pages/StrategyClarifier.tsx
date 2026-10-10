@@ -19,6 +19,7 @@ interface StrategyClarifierProps {
 
 export const StrategyClarifier: React.FC<StrategyClarifierProps> = ({ user, setView, setOrgContext }) => {
   const { t, language } = useLanguage();
+  const tr = (de: string, en: string) => (language === 'de' ? de : en);
   const [step, setStep] = useState<'LANDING' | 'ORG_CONTEXT' | 'SETUP' | 'OPTIONS' | 'DEEP_DIVE' | 'RESULT'>('LANDING');
   const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -177,20 +178,20 @@ export const StrategyClarifier: React.FC<StrategyClarifierProps> = ({ user, setV
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                <div>
                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('strat.setup.name')}</label>
-                 <input value={context.name} onChange={e => setContext({...context, name: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-blue" placeholder="z.B. Digital Unit 2025" />
+                 <input value={context.name} onChange={e => setContext({...context, name: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-blue" placeholder={tr('z.B. Digital Unit 2025', 'e.g. Digital Unit 2025')} />
                </div>
                <div>
-                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Zielgruppe</label>
-                 <input value={context.for_whom} onChange={e => setContext({...context, for_whom: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-blue" placeholder="Wer profitiert?" />
+                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{tr('Zielgruppe', 'Target group')}</label>
+                 <input value={context.for_whom} onChange={e => setContext({...context, for_whom: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-blue" placeholder={tr('Wer profitiert?', 'Who benefits?')} />
                </div>
             </div>
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Warum gerade jetzt? (Dringlichkeit)</label>
-              <textarea value={context.why_now} onChange={e => setContext({...context, why_now: e.target.value})} className="w-full h-24 p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-blue resize-none" placeholder="Was hat sich am Markt geändert?" />
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{tr('Warum gerade jetzt? (Dringlichkeit)', 'Why now? (urgency)')}</label>
+              <textarea value={context.why_now} onChange={e => setContext({...context, why_now: e.target.value})} className="w-full h-24 p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-blue resize-none" placeholder={tr('Was hat sich am Markt geändert?', 'What has changed in the market?')} />
             </div>
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Womit gewinnen wir?</label>
-              <textarea value={context.win_with} onChange={e => setContext({...context, win_with: e.target.value})} className="w-full h-24 p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-blue resize-none" placeholder="Technologie, Preis, Service..." />
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{tr('Womit gewinnen wir?', 'What do we win with?')}</label>
+              <textarea value={context.win_with} onChange={e => setContext({...context, win_with: e.target.value})} className="w-full h-24 p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-blue resize-none" placeholder={tr('Technologie, Preis, Service ...', 'Technology, price, service ...')} />
             </div>
             <button onClick={startOptionsGeneration} disabled={loading || !context.win_with} className="w-full bg-hs-blue text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-lg flex items-center justify-center">
               {loading ? <Loader2 className="animate-spin mr-3" /> : <Sparkles className="mr-3" />}
@@ -288,7 +289,7 @@ export const StrategyClarifier: React.FC<StrategyClarifierProps> = ({ user, setV
               <div className="flex space-x-3 no-print">
                 <button onClick={handleSaveSession} disabled={saveStatus !== 'idle'} className={`px-5 py-2 rounded-full text-xs font-black uppercase transition-all ${saveStatus === 'saved' ? 'bg-emerald-50 text-white' : 'bg-white/10 hover:bg-white/20'}`}>
                   {saveStatus === 'saving' ? <Loader2 size={12} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={12} /> : <Save size={12} />}
-                  <span className="ml-2">{saveStatus === 'saved' ? 'Gesichert' : 'Speichern'}</span>
+                  <span className="ml-2">{saveStatus === 'saved' ? tr('Gesichert', 'Saved') : tr('Speichern', 'Save')}</span>
                 </button>
                 <button onClick={() => window.print()} className="bg-white/10 hover:bg-white/20 p-2 rounded-full"><Printer size={18}/></button>
               </div>
@@ -369,7 +370,7 @@ export const StrategyClarifier: React.FC<StrategyClarifierProps> = ({ user, setV
                    <div className="p-3 bg-red-50 text-red-500 rounded-xl"><AlertCircle size={20}/></div>
                    <div>
                       <h4 className="font-bold text-hs-blue text-sm mb-1">{risk.risk}</h4>
-                      <p className="text-xs text-slate-500 leading-relaxed"><span className="font-black uppercase text-[9px] text-hs-orange">Mitigation:</span> {risk.mitigation}</p>
+                      <p className="text-xs text-slate-500 leading-relaxed"><span className="font-black uppercase text-[9px] text-hs-orange">{tr('Gegenmaßnahme:', 'Mitigation:')}</span> {risk.mitigation}</p>
                    </div>
                 </div>
               ))}
@@ -382,7 +383,7 @@ export const StrategyClarifier: React.FC<StrategyClarifierProps> = ({ user, setV
               <Compass size={180} className="text-hs-orange" />
            </div>
            <p className="text-lg font-bold text-hs-blue leading-relaxed relative z-10 max-w-2xl mx-auto">
-              Gerne unterstützen wir Sie bei der Umsetzung - Wenden Sie sich an <span className="text-hs-orange">Andre Stuer</span> und <span className="text-hs-orange">Olaf Heger</span> mit der email-Adresse <a href="mailto:kontakt@hs-results.com" className="text-hs-accent hover:text-hs-orange transition-colors underline decoration-2 underline-offset-4">kontakt@hs-results.com</a>
+              {tr('Gerne unterstützen wir Sie bei der Umsetzung - Wenden Sie sich an', 'We are happy to support you with the implementation. Please contact')} <span className="text-hs-orange">Andre Stuer</span> {tr('und', 'and')} <span className="text-hs-orange">Olaf Heger</span> {tr('mit der E-Mail-Adresse', 'at the email address')} <a href="mailto:kontakt@hs-results.com" className="text-hs-accent hover:text-hs-orange transition-colors underline decoration-2 underline-offset-4">kontakt@hs-results.com</a>
            </p>
         </div>
       </div>
@@ -394,7 +395,7 @@ export const StrategyClarifier: React.FC<StrategyClarifierProps> = ({ user, setV
       <div className="max-w-7xl mx-auto">
         {step !== 'LANDING' && (
            <button onClick={() => { setStep('LANDING'); setPlan(null); setApiError(null); }} className="mb-6 flex items-center text-slate-400 hover:text-hs-blue transition-colors font-black uppercase text-xs tracking-widest no-print">
-              <ChevronLeft size={16} className="mr-1" /> Zur Übersicht
+              <ChevronLeft size={16} className="mr-1" /> {tr('Zur Übersicht', 'Back to overview')}
            </button>
         )}
         {step === 'LANDING' && renderLanding()}

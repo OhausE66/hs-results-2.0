@@ -100,7 +100,7 @@ export const OrgContextForm: React.FC<OrgContextFormProps> = ({ user, onComplete
             {loadingTemplates ? (
               <Loader2 className="animate-spin mx-auto text-hs-accent" />
             ) : templates.length === 0 ? (
-              <p className="text-center text-xs text-slate-400 py-4 italic">Noch keine Profile gespeichert.</p>
+              <p className="text-center text-xs text-slate-400 py-4 italic">{language === 'de' ? 'Noch keine Profile gespeichert.' : 'No profiles saved yet.'}</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {templates.map((tpl, i) => (
@@ -121,17 +121,17 @@ export const OrgContextForm: React.FC<OrgContextFormProps> = ({ user, onComplete
         <div className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Profil-Name (z.B. IT-Abteilung)</label>
-              <input type="text" value={data.templateName} onChange={(e) => setData({...data, templateName: e.target.value})} placeholder="Interne Vorlage..." className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-blue transition-all shadow-inner" />
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{language === 'de' ? 'Profil-Name (z.B. IT-Abteilung)' : 'Profile name (e.g. IT department)'}</label>
+              <input type="text" value={data.templateName} onChange={(e) => setData({...data, templateName: e.target.value})} placeholder={language === 'de' ? 'Interne Vorlage ...' : 'Internal template ...'} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-blue transition-all shadow-inner" />
             </div>
             <div>
               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('cult.setup.size')}</label>
               <select value={data.size} onChange={(e) => setData({...data, size: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-blue transition-all shadow-inner">
-                <option>Startup (1-10 MA)</option>
-                <option>Kleinunternehmen (11-50 MA)</option>
-                <option>Mittelstand (50-250 MA)</option>
-                <option>Großunternehmen (250-1000 MA)</option>
-                <option>Konzern (1000+ MA)</option>
+                <option value="Startup (1-10 MA)">{language === 'de' ? 'Startup (1-10 MA)' : 'Startup (1-10 employees)'}</option>
+                <option value="Kleinunternehmen (11-50 MA)">{language === 'de' ? 'Kleinunternehmen (11-50 MA)' : 'Small business (11-50 employees)'}</option>
+                <option value="Mittelstand (50-250 MA)">{language === 'de' ? 'Mittelstand (50-250 MA)' : 'Mid-sized company (50-250 employees)'}</option>
+                <option value="Großunternehmen (250-1000 MA)">{language === 'de' ? 'Großunternehmen (250-1000 MA)' : 'Large company (250-1000 employees)'}</option>
+                <option value="Konzern (1000+ MA)">{language === 'de' ? 'Konzern (1000+ MA)' : 'Corporation (1000+ employees)'}</option>
               </select>
             </div>
           </div>
@@ -174,7 +174,7 @@ export const OrgContextForm: React.FC<OrgContextFormProps> = ({ user, onComplete
 
           <div>
             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{language === 'de' ? 'Aktuell größte Herausforderung' : 'Main Challenge'}</label>
-            <textarea placeholder="Was bremst Sie aktuell am meisten aus?" value={data.mainProblem} onChange={(e) => setData({...data, mainProblem: e.target.value})} className="w-full h-24 p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-blue transition-all resize-none shadow-inner" />
+            <textarea placeholder={language === 'de' ? 'Was bremst Sie aktuell am meisten aus?' : 'What is holding you back the most right now?'} value={data.mainProblem} onChange={(e) => setData({...data, mainProblem: e.target.value})} className="w-full h-24 p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-blue transition-all resize-none shadow-inner" />
           </div>
 
           <div className="flex flex-col md:flex-row gap-4 pt-6">

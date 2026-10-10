@@ -19,6 +19,7 @@ interface OrganizationAnalyzerProps {
 
 export const OrganizationAnalyzer: React.FC<OrganizationAnalyzerProps> = ({ user, setView, setOrgContext }) => {
   const { t, language } = useLanguage();
+  const tr = (de: string, en: string) => (language === 'de' ? de : en);
   const [step, setStep] = useState<'LANDING' | 'ORG_CONTEXT' | 'SETUP' | 'WIZARD' | 'RESULT'>('LANDING');
   const [history, setHistory] = useState<{ role: 'user' | 'model'; parts: { text: string }[] }[]>([]);
   const [userInput, setUserInput] = useState('');
@@ -250,12 +251,12 @@ ${(finalResult.optimization_proposals?.long_term || []).map(p => `- ${p}`).join(
                <div className="flex justify-between items-start mb-10">
                   <div className="flex space-x-3">
                      <span className="bg-hs-orange text-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] flex items-center">
-                        <CheckCircle size={14} className="mr-2"/> Audit Completed
+                        <CheckCircle size={14} className="mr-2"/> {tr('Audit abgeschlossen', 'Audit completed')}
                      </span>
                      <div className="flex space-x-2 no-print">
                         <button onClick={handleSaveSession} disabled={saveStatus !== 'idle'} className={`px-5 py-2 rounded-full text-[10px] font-black uppercase transition-all ${saveStatus === 'saved' ? 'bg-emerald-50 text-white' : 'bg-white/10 hover:bg-white/20'}`}>
                           {saveStatus === 'saving' ? <Loader2 size={12} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={12} /> : <Save size={12} />}
-                          <span className="ml-2">{saveStatus === 'saved' ? 'Gesichert' : 'Speichern'}</span>
+                          <span className="ml-2">{saveStatus === 'saved' ? tr('Gesichert', 'Saved') : tr('Speichern', 'Save')}</span>
                         </button>
                         <button onClick={handleDownload} className="bg-white/10 hover:bg-white/20 p-2 rounded-full"><Download size={18}/></button>
                      </div>
@@ -265,7 +266,7 @@ ${(finalResult.optimization_proposals?.long_term || []).map(p => `- ${p}`).join(
                      <p className="text-6xl font-black tracking-tighter">{finalResult.maturity_score}<span className="text-lg text-hs-accent">/100</span></p>
                   </div>
                </div>
-               <h1 className="text-4xl font-black uppercase tracking-tight mb-6">Audit Resultat</h1>
+               <h1 className="text-4xl font-black uppercase tracking-tight mb-6">{tr('Audit-Ergebnis', 'Audit result')}</h1>
                <p className="text-xl text-slate-300 leading-relaxed max-w-4xl font-medium">{finalResult.executive_summary}</p>
             </div>
          </div>
@@ -273,7 +274,7 @@ ${(finalResult.optimization_proposals?.long_term || []).map(p => `- ${p}`).join(
          {/* Stärken/Schwächen */}
          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="bg-white p-10 rounded-[3rem] shadow-xl border-l-8 border-emerald-500 hover:shadow-2xl transition-all">
-               <h3 className="text-2xl font-black text-emerald-600 uppercase mb-8 flex items-center"><Zap className="mr-3"/> Stärken</h3>
+               <h3 className="text-2xl font-black text-emerald-600 uppercase mb-8 flex items-center"><Zap className="mr-3"/> {tr('Stärken', 'Strengths')}</h3>
                <ul className="space-y-4">
                   {finalResult.strengths.map((s, i) => (
                     <li key={i} className="flex items-start text-slate-700 font-bold bg-slate-50 p-4 rounded-2xl border border-slate-100">
@@ -283,7 +284,7 @@ ${(finalResult.optimization_proposals?.long_term || []).map(p => `- ${p}`).join(
                </ul>
             </div>
             <div className="bg-white p-10 rounded-[3rem] shadow-xl border-l-8 border-hs-orange hover:shadow-2xl transition-all">
-               <h3 className="text-2xl font-black text-hs-orange uppercase mb-8 flex items-center"><ShieldAlert className="mr-3"/> Handlungsfelder</h3>
+               <h3 className="text-2xl font-black text-hs-orange uppercase mb-8 flex items-center"><ShieldAlert className="mr-3"/> {tr('Handlungsfelder', 'Areas for action')}</h3>
                <ul className="space-y-4">
                   {finalResult.weaknesses.map((w, i) => (
                     <li key={i} className="flex items-start text-slate-700 font-bold bg-slate-50 p-4 rounded-2xl border border-slate-100">
@@ -332,12 +333,12 @@ ${(finalResult.optimization_proposals?.long_term || []).map(p => `- ${p}`).join(
                <div className="flex items-center space-x-6">
                   <div className="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center text-hs-orange"><Settings size={32} /></div>
                   <div>
-                     <h5 className="font-black text-hs-blue uppercase text-lg">Reorg-Simulation starten?</h5>
-                     <p className="text-slate-500 text-sm">Nutzen Sie diese Ergebnisse direkt für eine digitale Simulation.</p>
+                     <h5 className="font-black text-hs-blue uppercase text-lg">{tr('Reorg-Simulation starten?', 'Start a reorg simulation?')}</h5>
+                     <p className="text-slate-500 text-sm">{tr('Nutzen Sie diese Ergebnisse direkt für eine digitale Simulation.', 'Use these results directly for a digital simulation.')}</p>
                   </div>
                </div>
                <button onClick={() => setView(ViewState.REORG_SIMULATOR)} className="bg-hs-orange text-white px-10 py-5 rounded-full font-black uppercase tracking-widest hover:bg-hs-blue transition-all shadow-xl flex items-center">
-                  Simulator Starten <ArrowRight className="ml-3" />
+                  {tr('Simulator starten', 'Start simulator')} <ArrowRight className="ml-3" />
                </button>
             </div>
          </div>
@@ -348,7 +349,7 @@ ${(finalResult.optimization_proposals?.long_term || []).map(p => `- ${p}`).join(
                <Mail size={200} />
             </div>
             <p className="text-xl font-bold leading-relaxed relative z-10 max-w-3xl mx-auto">
-               Gerne unterstützen wir Sie bei der Umsetzung - Wenden Sie sich an <span className="text-hs-orange">Andre Stuer</span> und <span className="text-hs-orange">Olaf Heger</span> mit der email-Adresse <a href="mailto:kontakt@hs-results.com" className="text-hs-accent hover:text-hs-orange transition-colors underline decoration-2 underline-offset-8">kontakt@hs-results.com</a>
+               {tr('Gerne unterstützen wir Sie bei der Umsetzung - Wenden Sie sich an', 'We are happy to support you with the implementation. Please contact')} <span className="text-hs-orange">Andre Stuer</span> {tr('und', 'and')} <span className="text-hs-orange">Olaf Heger</span> {tr('mit der E-Mail-Adresse', 'at the email address')} <a href="mailto:kontakt@hs-results.com" className="text-hs-accent hover:text-hs-orange transition-colors underline decoration-2 underline-offset-8">kontakt@hs-results.com</a>
             </p>
          </div>
       </div>
@@ -363,14 +364,14 @@ ${(finalResult.optimization_proposals?.long_term || []).map(p => `- ${p}`).join(
         {step === 'SETUP' && (
            <div className="max-w-4xl mx-auto py-12 animate-fade-in">
               <div className="bg-white p-10 rounded-[3rem] shadow-2xl border border-slate-100">
-                 <button onClick={() => setStep('LANDING')} className="mb-8 flex items-center text-slate-400 hover:text-hs-blue transition-colors font-black uppercase text-xs tracking-widest"><ChevronLeft size={16} className="mr-1" /> Zurück</button>
+                 <button onClick={() => setStep('LANDING')} className="mb-8 flex items-center text-slate-400 hover:text-hs-blue transition-colors font-black uppercase text-xs tracking-widest"><ChevronLeft size={16} className="mr-1" /> {tr('Zurück', 'Back')}</button>
                  <h2 className="text-3xl font-black text-hs-blue uppercase mb-8 flex items-center"><Layout className="mr-3 text-hs-orange" /> {t('org.setup.title')}</h2>
                  <div className="space-y-6">
                     <textarea value={userInput} onChange={e => setUserInput(e.target.value)} className="w-full h-48 p-8 bg-slate-50 border-2 border-slate-200 rounded-[2.5rem] outline-none focus:border-hs-blue transition-all text-lg shadow-inner" placeholder={t('org.placeholder.desc')} />
                     <div className="flex space-x-4">
-                       <button onClick={loadExampleScenario} className="flex-grow bg-slate-100 text-slate-600 py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all">Beispiel laden</button>
+                       <button onClick={loadExampleScenario} className="flex-grow bg-slate-100 text-slate-600 py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all">{tr('Beispiel laden', 'Load example')}</button>
                        <button onClick={startAnalysis} disabled={loading || !userInput} className="flex-[3] bg-hs-blue text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-xl flex items-center justify-center">
-                          {loading ? <Loader2 className="animate-spin mr-3" /> : <Sparkles className="mr-3" />} Audit-Prozess starten
+                          {loading ? <Loader2 className="animate-spin mr-3" /> : <Sparkles className="mr-3" />} {tr('Audit-Prozess starten', 'Start audit')}
                        </button>
                     </div>
                  </div>
@@ -404,9 +405,9 @@ ${(finalResult.optimization_proposals?.long_term || []).map(p => `- ${p}`).join(
                           ))}
                        </div>
                        <div className="pt-8 border-t border-slate-100">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center"><MessageSquareText size={14} className="mr-2" /> Eigene Antwort</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center"><MessageSquareText size={14} className="mr-2" /> {tr('Eigene Antwort', 'Your own answer')}</p>
                           <div className="relative">
-                             <input type="text" value={customAnswer} onChange={e => setCustomAnswer(e.target.value)} className="w-full p-5 bg-white border-2 border-slate-100 rounded-2xl outline-none focus:border-hs-blue shadow-inner pr-16" placeholder="Ihre spezifische Antwort..." />
+                             <input type="text" value={customAnswer} onChange={e => setCustomAnswer(e.target.value)} className="w-full p-5 bg-white border-2 border-slate-100 rounded-2xl outline-none focus:border-hs-blue shadow-inner pr-16" placeholder={tr('Ihre spezifische Antwort ...', 'Your specific answer ...')} />
                              <button onClick={() => submitAnswer(customAnswer)} disabled={!customAnswer} className="absolute right-2 top-2 bottom-2 bg-hs-blue text-white p-3 rounded-xl hover:bg-hs-orange transition-all disabled:opacity-30"><Send size={20}/></button>
                           </div>
                        </div>

@@ -20,6 +20,7 @@ interface ReorgSimulatorProps {
 
 export const ReorgSimulator: React.FC<ReorgSimulatorProps> = ({ user, setView, setOrgContext, orgContext }) => {
   const { t, language } = useLanguage();
+  const tr = (de: string, en: string) => (language === 'de' ? de : en);
   const [step, setStep] = useState<'LANDING' | 'ORG_CONTEXT' | 'INITIAL' | 'WIZARD' | 'RESULT'>('LANDING');
   const [history, setHistory] = useState<{ role: 'user' | 'model'; parts: { text: string }[] }[]>([]);
   const [userInput, setUserInput] = useState('');
@@ -141,7 +142,7 @@ export const ReorgSimulator: React.FC<ReorgSimulatorProps> = ({ user, setView, s
         {step === 'LANDING' && (
            <div className="max-w-4xl mx-auto text-center py-20">
               <h1 className="text-5xl font-black text-hs-blue uppercase mb-6">Reorg Simulator</h1>
-              <p className="text-xl text-slate-500 mb-10 leading-relaxed">Simulieren Sie Transformationen mit systemischer KI-Begleitung basierend auf Ihrem individuellen Organisationsprofil.</p>
+              <p className="text-xl text-slate-500 mb-10 leading-relaxed">{tr('Simulieren Sie Transformationen mit systemischer KI-Begleitung basierend auf Ihrem individuellen Organisationsprofil.', 'Simulate transformations with systemic AI support, based on your individual organization profile.')}</p>
               <button onClick={() => setStep('ORG_CONTEXT')} className="bg-hs-orange text-white px-10 py-5 rounded-full font-black uppercase tracking-widest hover:bg-hs-blue transition-all shadow-xl">Simulation Konfigurieren</button>
            </div>
         )}
@@ -153,7 +154,7 @@ export const ReorgSimulator: React.FC<ReorgSimulatorProps> = ({ user, setView, s
                 <textarea 
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
-                  placeholder="Welche Standorte sollen zusammengelegt werden? Welche Rollen fallen weg?"
+                  placeholder={tr('Welche Standorte sollen zusammengelegt werden? Welche Rollen fallen weg?', 'Which sites are to be merged? Which roles will be eliminated?')}
                   className="w-full h-48 rounded-2xl border-slate-200 border-2 p-6 text-lg outline-none transition-all shadow-inner"
                 />
                 <button onClick={startSimulator} disabled={!userInput.trim() || loading} className="w-full mt-6 bg-hs-orange text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-hs-blue transition-all shadow-lg">Simulation Starten</button>
@@ -193,7 +194,7 @@ export const ReorgSimulator: React.FC<ReorgSimulatorProps> = ({ user, setView, s
                     <div className="flex space-x-2 no-print">
                       <button onClick={handleSaveSession} disabled={saveStatus !== 'idle'} className={`px-5 py-2 rounded-full text-[10px] font-black uppercase transition-all ${saveStatus === 'saved' ? 'bg-emerald-50 text-white' : 'bg-white/10 hover:bg-white/20'}`}>
                         {saveStatus === 'saving' ? <Loader2 size={12} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={12} /> : <Save size={12} />}
-                        <span className="ml-2">{saveStatus === 'saved' ? 'Gesichert' : 'Speichern'}</span>
+                        <span className="ml-2">{saveStatus === 'saved' ? tr('Gesichert', 'Saved') : tr('Speichern', 'Save')}</span>
                       </button>
                     </div>
                   </div>
@@ -206,7 +207,7 @@ export const ReorgSimulator: React.FC<ReorgSimulatorProps> = ({ user, setView, s
                      <Mail size={160} />
                   </div>
                   <p className="text-lg font-bold text-hs-blue leading-relaxed relative z-10">
-                     Gerne unterstützen wir Sie bei der Umsetzung - Wenden Sie sich an <span className="text-hs-orange">Andre Stuer</span> und <span className="text-hs-orange">Olaf Heger</span> mit der email-Adresse <a href="mailto:kontakt@hs-results.com" className="text-hs-accent hover:text-hs-orange transition-colors underline decoration-2 underline-offset-4">kontakt@hs-results.com</a>
+                     {tr('Gerne unterstützen wir Sie bei der Umsetzung - Wenden Sie sich an', 'We are happy to support you with the implementation. Please contact')} <span className="text-hs-orange">Andre Stuer</span> {tr('und', 'and')} <span className="text-hs-orange">Olaf Heger</span> {tr('mit der E-Mail-Adresse', 'at the email address')} <a href="mailto:kontakt@hs-results.com" className="text-hs-accent hover:text-hs-orange transition-colors underline decoration-2 underline-offset-4">kontakt@hs-results.com</a>
                   </p>
                </div>
             </div>
