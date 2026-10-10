@@ -2,6 +2,7 @@ import express from 'express';
 import path, { join } from 'path';
 import { GoogleGenAI } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
+import websiteContextHandler from './api/website-context';
 
 const __dirname = process.cwd();
 
@@ -84,6 +85,8 @@ async function startServer() {
     }
   });
   
+  app.post('/api/website-context', websiteContextHandler);
+
   // Generic proxy for other AI tools
   app.post('/api/gemini/generate', async (req, res) => {
     try {
