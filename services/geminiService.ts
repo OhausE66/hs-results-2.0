@@ -519,12 +519,14 @@ export const generateChangeAnalysis = async (
   companyUrl: string, 
   toolAnswers: AssessmentResponse[],
   cultureAnswers: AssessmentResponse[],
-  lang: 'de' | 'en' = 'de'
+  lang: 'de' | 'en' = 'de',
+  orgProfile?: any
 ): Promise<AnalysisResult | null> => {
   const prompt = `Du bist ein Senior Change Management Consultant. Erstelle einen tiefgehenden, hochprofessionellen Bericht für folgendes Szenario:
   SZENARIO: ${scenario}
   METHODE: ${toolId}
   KONTEXT: ${companyDesc}
+  ORGANISATIONSPROFIL: ${orgProfile ? JSON.stringify(orgProfile) : 'Keine Angabe'}
   ANTWORTEN: ${JSON.stringify(toolAnswers)}
   KULTUR: ${JSON.stringify(cultureAnswers)}
   
@@ -545,7 +547,9 @@ export const generateChangeAnalysis = async (
       { "task": "Konkrete Aufgabe", "priority": "High/Medium/Low", "target": "Zielgruppe/Verantwortlich" }
     ],
     "cultural_levers": ["Hebel 1", "Hebel 2"]
-  }`;
+  }
+
+  Liefere für jede Phase mindestens zwei konkrete Maßnahmen im action_plan und nutze alle drei Prioritätsstufen sinnvoll. Berücksichtige das Organisationsprofil (Größe, Branche, Innovationskraft, Wirtschaftlichkeit).`;
 
   try {
     const response = await generateContent({
