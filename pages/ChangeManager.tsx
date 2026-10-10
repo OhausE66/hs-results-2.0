@@ -8,6 +8,7 @@ import {
   Heart, MessageSquareText, Cpu, BarChart3, PlayCircle, BookOpen, Printer, RefreshCw, Save, FolderOpen, ArrowRightLeft, ShieldCheck, Zap, Download, Mail, X, Check, Search, ListChecks, Map, Activity, ClipboardList, CheckSquare
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { AiWaiting } from '../components/AiWaiting';
 import { Auth } from '../components/Auth';
 import { saveProjectSession, db, collection, query, orderBy, onSnapshot } from '../services/firebase';
 import { OrgContextForm } from '../components/OrgContextForm';
@@ -34,6 +35,8 @@ export const ChangeManager: React.FC<ChangeManagerProps> = ({ user, setView, org
   const [cultureQuestions, setCultureQuestions] = useState<AssessmentQuestion[]>([]);
   const [cultureAnswers, setCultureAnswers] = useState<Record<string, string>>({});
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const tr = (de: string, en: string) => (language === 'de' ? de : en);
   const [questionsGenerated, setQuestionsGenerated] = useState(false);
 
   const [questions, setQuestions] = useState<AssessmentQuestion[]>([]);
@@ -60,13 +63,16 @@ export const ChangeManager: React.FC<ChangeManagerProps> = ({ user, setView, org
   const handleGenerateCultureQuestions = async () => {
     if (!scenario.trim()) return;
     setGeneratingQuestions(true);
+    setApiError(null);
     try {
       const fullPrompt = `${scenario} (Profile: ${JSON.stringify(orgInfo)})`;
       const qs = await generateSystemicQuestions(fullPrompt, companyDesc || "Organisation", language);
       setCultureQuestions(qs);
+      if (!qs || qs.length === 0) throw new Error('No questions generated');
       setQuestionsGenerated(true);
     } catch (e) {
       console.error(e);
+      setApiError(tr('Die Kultur-Fragen konnten nicht erstellt werden. Bitte versuchen Sie es erneut.', 'The culture questions could not be created. Please try again.'));
     } finally {
       setGeneratingQuestions(false);
     }
@@ -81,6 +87,8 @@ export const ChangeManager: React.FC<ChangeManagerProps> = ({ user, setView, org
 
   const handleGenerateAnalysis = async () => {
     setLoading(true);
+    setApiError(null);
+    setResult(null);
     setStep('RESULT');
     try {
       const toolAnswers: AssessmentResponse[] = questions.map(q => ({
@@ -91,11 +99,13 @@ export const ChangeManager: React.FC<ChangeManagerProps> = ({ user, setView, org
       }));
 
       const res = await generateChangeAnalysis(
-        selectedTool, scenario, "N/A", companyDesc, "N/A", toolAnswers, cultAnswers, language
+        selectedTool, scenario, "N/A", companyDesc, "N/A", toolAnswers, cultAnswers, language, orgInfo
       );
+      if (!res) throw new Error('Analysis empty');
       setResult(res);
     } catch (e) {
       console.error(e);
+      setApiError(tr('Der Bericht konnte nicht erstellt werden. Bitte versuchen Sie es erneut.', 'The report could not be created. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -142,12 +152,24 @@ export const ChangeManager: React.FC<ChangeManagerProps> = ({ user, setView, org
 
   const renderResult = () => {
     if (loading) return (
-      <div className="max-w-4xl mx-auto py-32 text-center">
-        <Loader2 size={64} className="animate-spin mx-auto text-hs-blue mb-4" />
-        <h2 className="text-3xl font-black text-hs-blue uppercase animate-pulse">{language === 'de' ? 'Bericht wird geschmiedet...' : 'Forging report...'}</h2>
+      <AiWaiting
+        messages={language === 'de'
+          ? ['Ihre Antworten werden ausgewertet …', 'Unsichtbare Dynamiken werden herausgearbeitet …', 'Phasen und Maßnahmen werden abgeleitet …', 'Risiken und Kulturhebel werden bewertet …']
+          : ['Evaluating your answers …', 'Working out hidden dynamics …', 'Deriving phases and actions …', 'Assessing risks and cultural levers …']}
+        hint={tr('Der Bericht ist umfangreich, das dauert meist 30–45 Sekunden.', 'The report is extensive and usually takes 30–45 seconds.')}
+      />
+    );
+    if (apiError || !result) return (
+      <div className="max-w-xl mx-auto py-24 px-4 text-center">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800" role="alert">
+          <p className="font-bold mb-4">{apiError || tr('Kein Bericht vorhanden.', 'No report available.')}</p>
+          <div className="flex justify-center gap-3">
+            <button onClick={handleGenerateAnalysis} className="bg-red-700 text-white px-6 py-3 rounded-full font-black uppercase text-xs tracking-widest hover:bg-red-800">{tr('Erneut versuchen', 'Try again')}</button>
+            <button onClick={() => setStep('ASSESSMENT')} className="bg-white border border-red-200 text-red-800 px-6 py-3 rounded-full font-black uppercase text-xs tracking-widest">{tr('Zurück zu den Fragen', 'Back to questions')}</button>
+          </div>
+        </div>
       </div>
     );
-    if (!result) return null;
 
     const data = result.data || {};
     const phases = data.phases || [];
@@ -372,6 +394,9 @@ export const ChangeManager: React.FC<ChangeManagerProps> = ({ user, setView, org
                       <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('cm.setup.scenario')}</label>
                       <textarea value={scenario} onChange={e => setScenario(e.target.value)} className="w-full h-32 p-6 bg-slate-50 rounded-2xl border-slate-200 border-2 outline-none focus:border-hs-blue transition-all text-lg" placeholder="Was soll sich ändern? z.B. Einführung einer flachen Hierarchie..." />
                    </div>
+                   {apiError && (
+                     <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800" role="alert">{apiError}</div>
+                   )}
                    <button onClick={handleGenerateCultureQuestions} disabled={generatingQuestions || !scenario} className="w-full bg-hs-blue text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-lg flex items-center justify-center">
                       {generatingQuestions ? <Loader2 className="animate-spin mr-3" /> : <MessageCircleQuestion className="mr-3" />} {t('cm.btn.questions')}
                    </button>
