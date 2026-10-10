@@ -372,25 +372,94 @@ export const generateStrategyFinalPlan = async (context: any, selected: Strategy
 };
 
 // Generate venture forge concepts
-export const generateVentureConcepts = async (dna: any, lang: 'de' | 'en' = 'de'): Promise<VentureConcept[]> => {
-  const prompt = `Generiere 3 innovative Venture-Konzepte für: ${JSON.stringify(dna)}. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. Antworte STRENG im JSON-Format.`;
-  const response = await generateContent({
-    model: modelName,
-    contents: prompt,
-    config: { responseMimeType: "application/json", temperature: 0.9 }
-  });
-  return safeParse(response.text) || [];
+// --- VENTUREFORGE ---
+// Feldnamen müssen mit VentureConcept / VentureDeepDive übereinstimmen, sonst bleiben die Karten leer.
+const str = (v: any): string => (typeof v === 'string' ? v : v == null ? '' : String(v));
+const strList = (v: any): string[] => (Array.isArray(v) ? v.map(str).filter(Boolean) : []);
+
+const normalizeConcept = (c: any, i: number): VentureConcept => ({
+  id: str(c?.id) || `concept-${i + 1}`,
+  name: str(c?.name),
+  tagline: str(c?.tagline),
+  problem_solved: str(c?.problem_solved),
+  reddit_trend_connection: str(c?.reddit_trend_connection),
+  monetization_strategy: str(c?.monetization_strategy),
+  exit_scenario_300k: str(c?.exit_scenario_300k),
+  roadmap_6_months: strList(c?.roadmap_6_months),
+});
+
+const normalizeDeepDive = (d: any): VentureDeepDive => ({
+  market_potential: str(d?.market_potential),
+  target_persona: str(d?.target_persona),
+  usp_details: str(d?.usp_details),
+  tech_stack: strList(d?.tech_stack),
+  extended_roadmap: (Array.isArray(d?.extended_roadmap) ? d.extended_roadmap : []).map((p: any) => ({
+    phase: str(p?.phase),
+    duration: str(p?.duration),
+    milestones: strList(p?.milestones),
+  })),
+  strategic_risks: (Array.isArray(d?.strategic_risks) ? d.strategic_risks : []).map((r: any) => ({
+    risk: str(r?.risk),
+    mitigation: str(r?.mitigation),
+  })),
+});
+
+const STRING = { type: "STRING" };
+const STRING_LIST = { type: "ARRAY", items: { type: "STRING" } };
+
+const ventureConceptSchema = {
+  type: "ARRAY",
+  items: {
+    type: "OBJECT",
+    properties: {
+      id: STRING, name: STRING, tagline: STRING, problem_solved: STRING, reddit_trend_connection: STRING,
+      monetization_strategy: STRING, exit_scenario_300k: STRING, roadmap_6_months: STRING_LIST,
+    },
+    required: ["id", "name", "tagline", "problem_solved", "reddit_trend_connection", "monetization_strategy", "exit_scenario_300k", "roadmap_6_months"],
+  },
 };
 
-// Deep Dive into a specific Venture Concept
-export const generateVentureDeepDive = async (concept: VentureConcept, dna: any, lang: 'de' | 'en' = 'de'): Promise<VentureDeepDive | null> => {
-  const prompt = `Erstelle eine detaillierte Deep-Dive-Analyse für: ${concept.name}. Kontext: ${JSON.stringify(dna)}. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}. Antworte in JSON.`;
+const ventureDeepDiveSchema = {
+  type: "OBJECT",
+  properties: {
+    market_potential: STRING, target_persona: STRING, usp_details: STRING, tech_stack: STRING_LIST,
+    extended_roadmap: {
+      type: "ARRAY",
+      items: { type: "OBJECT", properties: { phase: STRING, duration: STRING, milestones: STRING_LIST }, required: ["phase", "duration", "milestones"] },
+    },
+    strategic_risks: {
+      type: "ARRAY",
+      items: { type: "OBJECT", properties: { risk: STRING, mitigation: STRING }, required: ["risk", "mitigation"] },
+    },
+  },
+  required: ["market_potential", "target_persona", "usp_details", "tech_stack", "extended_roadmap", "strategic_risks"],
+};
+
+export const generateVentureConcepts = async (dna: any, lang: 'de' | 'en' = 'de'): Promise<VentureConcept[]> => {
+  const prompt = `Generiere 3 innovative Venture-Konzepte für: ${JSON.stringify(dna)}. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}.
+Antworte ausschließlich als JSON-Array mit genau 3 Objekten. Jedes Objekt hat exakt diese Felder: id (kurzer Slug), name, tagline, problem_solved, reddit_trend_connection, monetization_strategy, exit_scenario_300k, roadmap_6_months (Liste von 3-6 Meilensteinen als Text).`;
   const response = await generateContent({
     model: modelName,
     contents: prompt,
-    config: { responseMimeType: "application/json" }
+    config: { responseMimeType: "application/json", responseSchema: ventureConceptSchema, temperature: 0.9 }
   });
-  return safeParse(response.text);
+  const parsed = safeParse(response.text);
+  const list = Array.isArray(parsed) ? parsed : (parsed?.concepts || parsed?.venture_concepts || []);
+  return (Array.isArray(list) ? list : []).map(normalizeConcept).filter(c => c.name);
+};
+
+export const generateVentureDeepDive = async (concept: VentureConcept, dna: any, lang: 'de' | 'en' = 'de'): Promise<VentureDeepDive | null> => {
+  const prompt = `Erstelle eine detaillierte Deep-Dive-Analyse für: ${concept.name}. Kontext: ${JSON.stringify(dna)}. Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}.
+Antworte ausschließlich als JSON-Objekt mit exakt diesen Feldern: market_potential (Text), target_persona (Text), usp_details (Text), tech_stack (Liste), extended_roadmap (Liste von Objekten mit phase, duration, milestones als Liste), strategic_risks (Liste von Objekten mit risk und mitigation).`;
+  const response = await generateContent({
+    model: modelName,
+    contents: prompt,
+    config: { responseMimeType: "application/json", responseSchema: ventureDeepDiveSchema }
+  });
+  const parsed = safeParse(response.text);
+  if (!parsed) return null;
+  const result = normalizeDeepDive(parsed);
+  return result.usp_details || result.extended_roadmap.length ? result : null;
 };
 
 // Simple text summarization task using Gemini 3 Flash
