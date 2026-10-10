@@ -316,22 +316,50 @@ export const Home: React.FC<HomeProps> = ({ setView, user }) => {
         </div>
       </section>
 
-      {/* LEAPCOACH BANNER */}
+      {/* APPS: LEAPCOACH + SALES COMPANION */}
       <section className="bg-hs-blue py-10 no-print">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div>
-            <p className="text-hs-orange font-black uppercase tracking-[0.3em] text-xs mb-2">{t('home.leapcoach.label')}</p>
-            <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-2">{t('home.leapcoach.title')}</h2>
-            <p className="text-slate-200 max-w-2xl">{t('home.leapcoach.desc')}</p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+          <div className="flex flex-col justify-between gap-6">
+            <div>
+              <p className="text-hs-orange font-black uppercase tracking-[0.3em] text-xs mb-2">{t('home.leapcoach.label')}</p>
+              <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-2">{t('home.leapcoach.title')}</h2>
+              <p className="text-slate-200 max-w-xl">{t('home.leapcoach.desc')}</p>
+            </div>
+            <a
+              href="https://my.leapcoach.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-hs-orange text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-white hover:text-hs-blue transition-all shadow-xl whitespace-nowrap self-start"
+            >
+              {t('home.leapcoach.cta')}
+            </a>
           </div>
-          <a
-            href="https://my.leapcoach.ai"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-hs-orange text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-white hover:text-hs-blue transition-all shadow-xl whitespace-nowrap self-start md:self-auto"
-          >
-            {t('home.leapcoach.cta')}
-          </a>
+          <div className="flex flex-col justify-between gap-6 lg:border-l lg:border-white/15 lg:pl-12">
+            <div>
+              <p className="text-hs-orange font-black uppercase tracking-[0.3em] text-xs mb-2">{t('home.sales.label')}</p>
+              <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-2">{t('home.sales.title')}</h2>
+              <p className="text-slate-200 max-w-xl">{t('home.sales.desc')}</p>
+            </div>
+            <div className="flex flex-wrap gap-3 self-start">
+              {/* TODO: Google-Play-Link ersetzen, sobald die genaue Store-URL feststeht (aktuell Store-Suche). */}
+              <a
+                href="https://apps.apple.com/de/app/sales-companion-by-hybridai/id6811865989"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-white text-hs-blue px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-hs-orange hover:text-white transition-all shadow-xl whitespace-nowrap"
+              >
+                {t('home.sales.appstore')}
+              </a>
+              <a
+                href="https://play.google.com/store/search?q=Sales%20Companion%20HybridAI&c=apps"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-white/10 border-2 border-white/30 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-white hover:text-hs-blue transition-all whitespace-nowrap"
+              >
+                {t('home.sales.playstore')}
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 
