@@ -6,7 +6,7 @@ import {
   Target, RefreshCw, ChevronLeft, Building, MessageCircle, ShieldAlert, Zap, ListChecks, PlayCircle, Globe, Download, Printer, Info, Users, Heart, Save, AlertCircle, Calendar, BarChart3, TrendingUp, MessageSquareText, Mail
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Auth } from '../components/Auth';
+import { ResultTeaser } from '../components/ResultTeaser';
 import { saveProjectSession } from '../services/firebase';
 import { OrgContextForm } from '../components/OrgContextForm';
 import { AiWaiting } from '../components/AiWaiting';
@@ -15,6 +15,7 @@ type Step = 'LANDING' | 'ORG_CONTEXT' | 'STORIES' | 'HYPOTHESES' | 'GOAL' | 'RES
 
 export const CultureScanner: React.FC<{ user: any, setView: (v: ViewState) => void }> = ({ user, setView }) => {
   const { t, language } = useLanguage();
+  const tr = (de: string, en: string) => (language === 'de' ? de : en);
   const [step, setStep] = useState<Step>('LANDING');
   const [loading, setLoading] = useState(false);
   const [loadingGoals, setLoadingGoals] = useState(false);
@@ -76,27 +77,27 @@ export const CultureScanner: React.FC<{ user: any, setView: (v: ViewState) => vo
     if (!analysis || !analysis.profile || !orgInfo) return;
     const content = `
 HS-RESULTS CULTURE SCAN REPORT
-Titel: ${analysis.profile.title}
-Datum: ${new Date().toLocaleString()}
+${tr('Titel', 'Title')}: ${analysis.profile.title}
+${tr('Datum', 'Date')}: ${new Date().toLocaleString()}
 
-ORGANISATION:
-- Größe: ${orgInfo.size}
-- Branche: ${orgInfo.industry}
-- Besteht seit: ${orgInfo.establishedSince}
-- Innovationskraft: ${orgInfo.innovationLevel}/10
-- Wirtschaftlichkeit: ${orgInfo.profitability}/10
-- Hauptproblem: ${orgInfo.mainProblem}
+${tr('ORGANISATION', 'ORGANIZATION')}:
+- ${tr('Größe', 'Size')}: ${orgInfo.size}
+- ${tr('Branche', 'Industry')}: ${orgInfo.industry}
+- ${tr('Besteht seit', 'Established')}: ${orgInfo.establishedSince}
+- ${tr('Innovationskraft', 'Innovation capability')}: ${orgInfo.innovationLevel}/10
+- ${tr('Wirtschaftlichkeit', 'Profitability')}: ${orgInfo.profitability}/10
+- ${tr('Hauptproblem', 'Main challenge')}: ${orgInfo.mainProblem}
 
-ZUSAMMENFASSUNG:
+${tr('ZUSAMMENFASSUNG', 'SUMMARY')}:
 ${analysis.profile.summary}
 
-KULTURELLE BARRIEREN (Shadow Culture):
+${tr('KULTURELLE BARRIEREN', 'CULTURAL BARRIERS')} (Shadow Culture):
 ${(analysis.profile.shadow_culture_traits || []).map(t => `- ${t}`).join('\n')}
 
-ENTWICKLUNGSPOTENTIALE:
+${tr('ENTWICKLUNGSPOTENTIALE', 'DEVELOPMENT POTENTIAL')}:
 ${(analysis.profile.strengths || []).map(s => `- ${s}`).join('\n')}
 
-STRATEGISCHE HEBEL:
+${tr('STRATEGISCHE HEBEL', 'STRATEGIC LEVERS')}:
 ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).join('\n')}
     `;
     const blob = new Blob([content], { type: 'text/plain' });
@@ -234,33 +235,33 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
             : ['Step 1 of 3: Evaluating your stories …', 'Step 1 of 3: Identifying cultural patterns …', 'Step 1 of 3: Formulating hypotheses …']}
           hint={language === 'de' ? 'Das dauert meist 15–30 Sekunden.' : 'This usually takes 15–30 seconds.'}
         /> : <>
-        <h2 className="text-3xl font-black text-hs-blue uppercase mb-8">Kulturelle Erzählungen</h2>
+        <h2 className="text-3xl font-black text-hs-blue uppercase mb-8">{tr('Kulturelle Erzählungen', 'Cultural stories')}</h2>
         <div className="space-y-6">
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Erfolgsgeschichte: Was macht uns stolz?</label>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">{tr('Erfolgsgeschichte: Was macht uns stolz?', 'Success story: What makes us proud?')}</label>
             <textarea 
               value={stories.success} 
               onChange={e => setStories({...stories, success: e.target.value})} 
               className="w-full h-32 p-4 rounded-2xl border-2 border-slate-100 outline-none" 
-              placeholder="Beschreiben Sie eine Situation, die typisch für unseren Erfolg ist..."
+              placeholder={tr('Beschreiben Sie eine Situation, die typisch für unseren Erfolg ist...', 'Describe a situation that is typical of our success...')}
             />
           </div>
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Umgang mit Fehlern: Was passiert, wenn etwas schiefgeht?</label>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">{tr('Umgang mit Fehlern: Was passiert, wenn etwas schiefgeht?', 'Response to mistakes: What happens when something goes wrong?')}</label>
             <textarea 
               value={stories.mistakes} 
               onChange={e => setStories({...stories, mistakes: e.target.value})} 
               className="w-full h-32 p-4 rounded-2xl border-2 border-slate-100 outline-none" 
-              placeholder="Wie wurde in der Vergangenheit mit einem großen Fehler umgegangen?"
+              placeholder={tr('Wie wurde in der Vergangenheit mit einem großen Fehler umgegangen?', 'How was a major mistake handled in the past?')}
             />
           </div>
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Konflikte: Wie werden bei uns Differenzen gelöst?</label>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">{tr('Konflikte: Wie werden bei uns Differenzen gelöst?', 'Conflicts: How are differences resolved here?')}</label>
             <textarea 
               value={stories.conflicts} 
               onChange={e => setStories({...stories, conflicts: e.target.value})} 
               className="w-full h-32 p-4 rounded-2xl border-2 border-slate-100 outline-none" 
-              placeholder="Ein Beispiel für eine gelöste (oder ungelöste) Differenz..."
+              placeholder={tr('Ein Beispiel für eine gelöste (oder ungelöste) Differenz...', 'An example of a resolved (or unresolved) difference...')}
             />
           </div>
           <button 
@@ -269,7 +270,7 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
             className="w-full bg-hs-blue text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg flex items-center justify-center"
           >
             {loading ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" />}
-            Hypothesen generieren
+            {tr('Hypothesen generieren', 'Generate hypotheses')}
           </button>
           {renderApiError(startHypothesesGeneration)}
         </div>
@@ -287,8 +288,8 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
             : ['Step 2 of 3: Evaluating your ratings …', 'Step 2 of 3: Developing possible directions …', 'Step 2 of 3: Formulating strategic options …']}
           hint={language === 'de' ? 'Das dauert meist 15–30 Sekunden.' : 'This usually takes 15–30 seconds.'}
         /> : <>
-        <h2 className="text-3xl font-black text-hs-blue uppercase mb-2">Kultur-Hypothesen</h2>
-        <p className="text-slate-500 mb-8">Wie zutreffend sind diese Beobachtungen? (1 = gar nicht, 5 = absolut)</p>
+        <h2 className="text-3xl font-black text-hs-blue uppercase mb-2">{tr('Kultur-Hypothesen', 'Culture hypotheses')}</h2>
+        <p className="text-slate-500 mb-8">{tr('Wie zutreffend sind diese Beobachtungen? (1 = gar nicht, 5 = absolut)', 'How accurate are these observations? (1 = not at all, 5 = absolutely)')}</p>
         <div className="space-y-8 mb-10">
           {hypotheses.map(h => (
             <div key={h.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
@@ -312,7 +313,7 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
           className="w-full bg-hs-blue text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg flex items-center justify-center"
         >
           {loadingGoals ? <Loader2 className="animate-spin mr-2" /> : <Target className="mr-2" />}
-          Strategische Zielrichtungen finden
+          {tr('Strategische Zielrichtungen finden', 'Find strategic directions')}
         </button>
         {renderApiError(startGoalGeneration)}
         </>}
@@ -329,7 +330,7 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
             : ['Step 3 of 3: Combining your cultural patterns …', 'Step 3 of 3: Deriving strategic levers …', 'Step 3 of 3: Creating your analysis plan …']}
           hint={language === 'de' ? 'Das dauert meist 15–30 Sekunden.' : 'This usually takes 15–30 seconds.'}
         /> : <>
-        <h2 className="text-3xl font-black text-hs-blue uppercase mb-8">Strategischer Fokus</h2>
+        <h2 className="text-3xl font-black text-hs-blue uppercase mb-8">{tr('Strategischer Fokus', 'Strategic focus')}</h2>
         <div className="space-y-4 mb-10">
           {dynamicDirections.map((dir, i) => (
             <button 
@@ -347,7 +348,7 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
           className="w-full bg-hs-blue text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg flex items-center justify-center"
         >
           {loading ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle size={20} className="mr-2" />}
-          Finalen Kultur-Analyse-Plan erstellen
+          {tr('Finalen Kultur-Analyse-Plan erstellen', 'Create final culture analysis plan')}
         </button>
         {renderApiError(generateFinal)}
         </>}
@@ -356,9 +357,24 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
   );
 
   const renderResult = () => {
-    if (!user) return <Auth inline={true} />;
-    if (loading) return <div className="py-20 text-center"><Loader2 size={48} className="animate-spin mx-auto text-hs-blue mb-4" /><p className="font-bold">Analyse wird erstellt...</p></div>;
+    if (loading) return <div className="py-20 text-center"><Loader2 size={48} className="animate-spin mx-auto text-hs-blue mb-4" /><p className="font-bold">{tr('Analyse wird erstellt...', 'Creating analysis...')}</p></div>;
     if (!analysis) return null;
+
+    if (!user) {
+      const levers = analysis.levers?.length || 0;
+      const interventions = analysis.interventions?.length || 0;
+      return (
+        <ResultTeaser
+          title={tr('Kultur-Scan abgeschlossen', 'Culture scan completed')}
+          lead={analysis.profile.summary}
+          locked={[
+            tr(`${levers} strategische Hebel`, `${levers} strategic levers`),
+            tr(`${interventions} Handlungsoptionen und Sofort-Maßnahmen`, `${interventions} action options and immediate measures`),
+            tr('6-Wochen-Experimentier-Plan', '6-week experimentation plan'),
+          ]}
+        />
+      );
+    }
 
     return (
       <div className="max-w-5xl mx-auto py-12 animate-fade-in space-y-10 px-4">
@@ -368,9 +384,16 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
                <div className="flex space-x-2 no-print">
                   <button onClick={handleSaveSession} disabled={saveStatus !== 'idle'} className={`flex items-center space-x-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${saveStatus === 'saved' ? 'bg-emerald-500' : 'bg-white/10 hover:bg-white/20'}`}>
                     {saveStatus === 'saving' ? <Loader2 size={12} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={12} /> : <Save size={12} />}
-                    <span>{saveStatus === 'saved' ? 'Gesichert' : 'Sichern'}</span>
+                    <span>{saveStatus === 'saved' ? tr('Gesichert', 'Saved') : tr('Sichern', 'Save')}</span>
                   </button>
-                  <button className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors" onClick={handleDownload}><Download size={16}/></button>
+                  <button
+                    className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors"
+                    onClick={handleDownload}
+                    title={tr('Ergebnis herunterladen', 'Download result')}
+                    aria-label={tr('Ergebnis herunterladen', 'Download result')}
+                  >
+                    <Download size={16}/>
+                  </button>
                </div>
             </div>
             <p className="text-xl text-slate-300 leading-relaxed max-w-3xl relative z-10">{analysis.profile.summary}</p>
@@ -386,7 +409,7 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
                </ul>
             </div>
             <div className="bg-white p-8 rounded-3xl shadow-xl border-l-8 border-emerald-500">
-               <h3 className="text-xl font-black text-emerald-600 uppercase mb-6 flex items-center"><Zap className="mr-2"/> Ressourcen</h3>
+               <h3 className="text-xl font-black text-emerald-600 uppercase mb-6 flex items-center"><Zap className="mr-2"/> {tr('Ressourcen', 'Strengths')}</h3>
                <ul className="space-y-4">
                   {(analysis.profile.strengths || []).map((s, i) => (
                     <li key={i} className="flex items-start text-slate-700 font-medium"><CheckCircle size={18} className="text-emerald-500 mr-3 mt-1 flex-shrink-0" /> {s}</li>
@@ -396,11 +419,11 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
          </div>
 
          <div className="bg-white p-10 rounded-3xl shadow-xl border border-slate-100">
-            <h3 className="text-2xl font-black text-hs-blue uppercase mb-8 flex items-center"><TrendingUp className="mr-3 text-hs-accent" /> Strategische Hebel</h3>
+            <h3 className="text-2xl font-black text-hs-blue uppercase mb-8 flex items-center"><TrendingUp className="mr-3 text-hs-accent" /> {tr('Strategische Hebel', 'Strategic levers')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                {(analysis.levers || []).map((l, i) => (
                  <div key={i} className="bg-slate-50 p-6 rounded-2xl border-t-4 border-hs-accent">
-                    <p className="text-[10px] font-black text-hs-accent uppercase mb-2">Impact: {l.impact}</p>
+                    <p className="text-[10px] font-black text-hs-accent uppercase mb-2">{tr('Wirkung', 'Impact')}: {l.impact}</p>
                     <h4 className="font-black text-hs-blue mb-2">{l.area}</h4>
                     <p className="text-sm text-slate-600">{l.description}</p>
                  </div>
@@ -413,13 +436,13 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
             <div className="bg-white p-10 rounded-3xl shadow-xl border border-slate-100">
                <h3 className="text-2xl font-black text-hs-blue uppercase mb-8 flex items-center">
                   <ListChecks className="mr-3 text-hs-orange" /> 
-                  Handlungsalternativen & Sofort-Maßnahmen
+                  {tr('Handlungsalternativen & Sofort-Maßnahmen', 'Action options & immediate measures')}
                </h3>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {(analysis.interventions || []).map((inv, i) => (
                     <div key={i} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-hs-orange transition-colors">
                        <h4 className="text-hs-orange font-black uppercase text-xs mb-2">{inv.title}</h4>
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Zielgruppe: {inv.target}</p>
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{tr('Zielgruppe', 'Target group')}: {inv.target}</p>
                        <p className="text-sm text-slate-700 font-medium">{inv.action}</p>
                     </div>
                   ))}
@@ -429,7 +452,7 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
             <div className="bg-white p-10 rounded-3xl shadow-xl border border-slate-100">
                <h3 className="text-2xl font-black text-hs-blue uppercase mb-8 flex items-center">
                   <Calendar className="mr-3 text-hs-accent" /> 
-                  6-Wochen Experimentier-Plan
+                  {tr('6-Wochen Experimentier-Plan', '6-week experimentation plan')}
                </h3>
                <div className="space-y-4">
                   {(analysis.experiment_plan_6_weeks || []).map((exp, i) => (
@@ -442,7 +465,7 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
                           <p className="text-sm font-bold text-hs-blue">{exp.experiment}</p>
                        </div>
                        <div className="flex-shrink-0 md:w-64 bg-white/50 p-3 rounded-xl border border-white">
-                          <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Erfolgs-Signal</p>
+                          <p className="text-[9px] font-black text-slate-400 uppercase mb-1">{tr('Erfolgs-Signal', 'Success signal')}</p>
                           <p className="text-xs text-emerald-600 font-bold">{exp.success_signal}</p>
                        </div>
                     </div>
@@ -457,7 +480,7 @@ ${(analysis.levers || []).map(l => `${l.area} (${l.impact}): ${l.description}`).
                <Mail size={160} />
             </div>
             <p className="text-xl font-bold leading-relaxed relative z-10 max-w-3xl mx-auto">
-               Gerne unterstützen wir Sie bei der Umsetzung - Wenden Sie sich an <span className="text-hs-blue">Andre Stuer</span> und <span className="text-hs-blue">Olaf Heger</span> mit der email-Adresse <a href="mailto:kontakt@hs-results.com" className="text-white hover:text-hs-blue transition-colors underline decoration-2 underline-offset-4">kontakt@hs-results.com</a>
+               {tr('Gerne unterstützen wir Sie bei der Umsetzung – wenden Sie sich an', 'We are happy to support you with implementation – contact')} <span className="text-hs-blue">Andre Stuer</span> {tr('und', 'and')} <span className="text-hs-blue">Olaf Heger</span> {tr('unter der E-Mail-Adresse', 'at')} <a href="mailto:kontakt@hs-results.com" className="text-white hover:text-hs-blue transition-colors underline decoration-2 underline-offset-4">kontakt@hs-results.com</a>
             </p>
          </div>
       </div>
