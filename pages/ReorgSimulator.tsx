@@ -7,7 +7,7 @@ import {
   Zap, Calendar, BarChart, Info, ShieldAlert, Sparkles, RefreshCw, Download, Building, Globe, ChevronLeft, Settings, PlayCircle, PlusCircle, Save, MessageSquareText, Send, Mail, X
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Auth } from '../components/Auth';
+import { ResultTeaser } from '../components/ResultTeaser';
 import { saveProjectSession } from '../services/firebase';
 import { OrgContextForm } from '../components/OrgContextForm';
 
@@ -178,13 +178,13 @@ export const ReorgSimulator: React.FC<ReorgSimulatorProps> = ({ user, setView, s
         )}
         {step === 'RESULT' && finalResult && (
           !user ? (
-            <div className="max-w-2xl mx-auto py-12 animate-fade-in">
-              <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 text-center mb-10">
-                <h2 className="text-2xl font-black text-hs-blue uppercase mb-4">Simulation beendet</h2>
-                <p className="text-slate-500 mb-0">Bitte melden Sie sich an, um die vollständige Impact-Analyse und den Implementierungs-Fahrplan freizuschalten.</p>
-              </div>
-              <Auth inline={true} />
-            </div>
+            <ResultTeaser
+              title={language === 'de' ? 'Simulation beendet' : 'Simulation completed'}
+              lead={finalResult.impact_analysis.description}
+              locked={language === 'de'
+                ? ['Impact-Analyse mit Annahmen', '30-60-90-Tage-Fahrplan', 'Risikoregister mit Frühwarnsignalen', 'Kommunikationsplan mit Antworten auf typische Fragen']
+                : ['Impact analysis with assumptions', '30-60-90 day roadmap', 'Risk register with early signals', 'Communication plan with answers to typical questions']}
+            />
           ) : (
             <div className="max-w-6xl mx-auto py-12 space-y-10 animate-fade-in px-4">
                <div className="bg-hs-blue text-white p-10 rounded-3xl shadow-2xl">
