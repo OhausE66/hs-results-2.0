@@ -8,10 +8,12 @@ import { Employee, ViewState } from '../types';
 import { 
   Users, Activity, Sparkles, LayoutDashboard, 
   MessageSquare, Trash2, Plus, Edit, Brain, Heart, Loader2,
-  ChevronLeft, ArrowRight, Target, Layers, Zap, CheckCircle, Search, TrendingUp, BarChart3, UserCheck, AlertCircle, Calendar, ClipboardCheck, Briefcase, FileText, ArrowRightLeft, X, Info, Save, MessageCircle, HelpCircle, ArrowDownCircle, Lightbulb, UserPlus, Settings, SaveAll, FileSearch, ShieldCheck, Database
+  ChevronLeft, ArrowRight, Target, Layers, Zap, CheckCircle, Search, TrendingUp, BarChart3, UserCheck, AlertCircle, Calendar, ClipboardCheck, Briefcase, FileText, ArrowRightLeft, X, Info, Save, MessageCircle, HelpCircle, ArrowDownCircle, Lightbulb, UserPlus, Settings, SaveAll, FileSearch, Database, RefreshCw
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Auth } from '../components/Auth';
+import { AiWaiting } from '../components/AiWaiting';
+import { ResultTeaser } from '../components/ResultTeaser';
 import { saveProjectSession } from '../services/firebase';
 import { generateContent } from '../services/geminiService';
 
@@ -121,6 +123,7 @@ interface LeadershipRadarProps {
 
 export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.ReactElement => {
   const { t, language } = useLanguage();
+  const tr = (de: string, en: string) => language === 'de' ? de : en;
   const [step, setStep] = useState<OnboardingStep>('LANDING');
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_DATA);
@@ -148,6 +151,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
   const [reflectionAnswers, setReflectionAnswers] = useState<string[]>(['', '', '', '', '']);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [detailedAnalysis, setDetailedAnalysis] = useState<any>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
@@ -175,6 +179,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
       alert("Bitte melden Sie sich an, um Ihr Profil im Vault zu speichern.");
       return;
     }
+    if (apiError) return;
     setSaveStatus('saving');
     try {
       await saveProjectSession(user.uid, {
@@ -199,6 +204,8 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
   };
 
   const generateSystemicQuestions = async () => {
+    setApiError(null);
+    setSystemicQuestions([]);
     setLoadingQuestions(true);
     setStep('REFLECTION');
     try {
@@ -209,29 +216,20 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
         contents: prompt
       });
       
-      const questions = response.text?.split('\n').filter(q => q.trim().length > 5).slice(0, 5) || [
-        "Wessen Erwartungen versuchen Sie am meisten zu erfüllen?",
-        "Was würde passieren, wenn Sie das Problem eine Woche lang ignorieren?",
-        "Welchen Anteil an der aktuellen Situation haben Ihre eigenen Routinen?",
-        "Wer im Team profitiert heimlich davon, dass sich nichts ändern will?",
-        "Welcher unausgesprochene Konflikt wird durch dieses Sachthema überlagert?"
-      ];
+      const questions = response.text?.split('\n').filter(q => q.trim().length > 5).slice(0, 5) || [];
+      if (questions.length === 0) throw new Error('No questions returned');
       setSystemicQuestions(questions);
     } catch (e) {
       console.error(e);
-      setSystemicQuestions([
-        "Welcher Teil der Herausforderung liegt wirklich in Ihrem Kontrollbereich?",
-        "Was ist der Gewinn für die Organisation, wenn alles so bleibt wie es ist?",
-        "Welche unausgesprochene Regel wird hier gerade befolgt?",
-        "Wie müssten Sie sich verhalten, um das Problem garantiert zu verschlimmern?",
-        "Woran würden Ihre Kritiker merken, dass Sie das Ziel erreicht haben?"
-      ]);
+      setApiError(tr('Die Coaching-Fragen konnten nicht erstellt werden. Bitte versuchen Sie es erneut.', 'The coaching questions could not be created. Please try again.'));
     } finally {
       setLoadingQuestions(false);
     }
   };
 
   const generateDetailedAnalysis = async (path: string) => {
+    setApiError(null);
+    setDetailedAnalysis(null);
     setLeaderContext(prev => ({ ...prev, chosenPath: path }));
     setStep('ANALYSIS');
     setLoadingAnalysis(true);
@@ -259,16 +257,15 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
         config: { responseMimeType: "application/json" }
       });
       
-      setDetailedAnalysis(JSON.parse(response.text || '{}'));
+      const analysis = JSON.parse(response.text || '{}');
+      if (!analysis.management_summary || !Array.isArray(analysis.strategic_levers) || !Array.isArray(analysis.cultural_risks) || !analysis.impact_analysis || !Array.isArray(analysis.next_steps)) {
+        throw new Error('Incomplete analysis returned');
+      }
+      setDetailedAnalysis(analysis);
     } catch (e) {
       console.error(e);
-      setDetailedAnalysis({
-        management_summary: "Fehler bei der KI-Generierung. Bitte prüfen Sie Ihre Verbindung.",
-        strategic_levers: ["Analyse manuell durchführen"],
-        cultural_risks: ["Keine Daten"],
-        impact_analysis: "N/A",
-        next_steps: ["Vorgang wiederholen"]
-      });
+      setDetailedAnalysis(null);
+      setApiError(tr('Die Führungsanalyse konnte nicht erstellt werden. Bitte versuchen Sie es erneut.', 'The leadership analysis could not be created. Please try again.'));
     } finally {
       setLoadingAnalysis(false);
     }
@@ -618,9 +615,28 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
         <p className="text-slate-500 mb-10 uppercase text-[10px] font-black tracking-widest">Schritt 3: Den Kern freilegen</p>
         
         {loadingQuestions ? (
-          <div className="py-20 text-center">
-            <Loader2 size={48} className="animate-spin mx-auto text-hs-blue mb-6" />
-            <p className="font-black text-hs-blue uppercase animate-pulse">KI generiert Coaching-Fragen...</p>
+          <AiWaiting
+            messages={language === 'de' ? [
+              'Ihre Führungssituation wird eingeordnet …',
+              'Systemische Coaching-Fragen werden entwickelt …',
+              'Blinde Flecken und Muster werden herausgearbeitet …'
+            ] : [
+              'Mapping your leadership situation …',
+              'Developing systemic coaching questions …',
+              'Surfacing blind spots and patterns …'
+            ]}
+            hint={tr('Die Fragen sind meist nach 15–30 Sekunden bereit.', 'The questions are usually ready within 15–30 seconds.')}
+          />
+        ) : apiError ? (
+          <div className="max-w-2xl mx-auto py-12 text-center" role="alert">
+            <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-red-100">
+              <AlertCircle size={56} className="mx-auto text-red-500 mb-6" />
+              <h3 className="text-2xl font-black text-hs-blue uppercase mb-4">{tr('Die KI konnte nicht antworten.', 'The AI could not respond.')}</h3>
+              <p className="text-slate-500 mb-8">{apiError}</p>
+              <button onClick={generateSystemicQuestions} className="bg-hs-blue text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-xl">
+                <RefreshCw size={16} className="inline mr-2" />{tr('Erneut versuchen', 'Try again')}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-12">
@@ -715,29 +731,54 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
   );
 
   const renderAnalysis = () => {
-    if (!user) {
+    if (loadingAnalysis) {
       return (
-        <div className="max-w-2xl mx-auto py-12 animate-fade-in">
-           <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-slate-100 text-center mb-10">
-              <ShieldCheck size={48} className="mx-auto text-hs-blue mb-4" />
-              <h2 className="text-2xl font-black text-hs-blue uppercase mb-4">Analyse fast bereit</h2>
-              <p className="text-slate-500 mb-0">Um Ihre individuelle KI-Führungsanalyse anzuzeigen und im Vault zu sichern, melden Sie sich bitte an.</p>
-           </div>
-           <Auth inline={true} onAuthSuccess={() => setStep('ANALYSIS')} />
-        </div>
+        <AiWaiting
+          messages={language === 'de' ? [
+            'Ihre Reflexion wird verdichtet …',
+            'Führungshebel und Risiken werden abgeleitet …',
+            'Ihr persönlicher Analysebericht wird aufgebaut …'
+          ] : [
+            'Consolidating your reflection …',
+            'Deriving leadership levers and risks …',
+            'Building your personal analysis report …'
+          ]}
+          hint={tr('Der Analysebericht ist meist nach 20–40 Sekunden bereit.', 'The analysis report is usually ready within 20–40 seconds.')}
+        />
       );
     }
 
-    if (loadingAnalysis) {
+    if (apiError) {
       return (
-        <div className="max-w-4xl mx-auto py-32 text-center">
-           <Loader2 size={64} className="animate-spin mx-auto text-hs-blue mb-8" />
-           <h2 className="text-3xl font-black text-hs-blue uppercase animate-pulse">KI schmiedet Ihren Strategie-Bericht...</h2>
+        <div className="max-w-2xl mx-auto py-20 text-center px-4" role="alert">
+          <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-red-100">
+            <AlertCircle size={64} className="mx-auto text-red-500 mb-6" />
+            <h2 className="text-2xl font-black text-hs-blue uppercase mb-4">{tr('Die Analyse konnte nicht erstellt werden.', 'The analysis could not be created.')}</h2>
+            <p className="text-slate-500 mb-8">{apiError}</p>
+            <button onClick={() => generateDetailedAnalysis(leaderContext.chosenPath)} className="bg-hs-blue text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-xl">
+              <RefreshCw size={16} className="inline mr-2" />{tr('Erneut versuchen', 'Try again')}
+            </button>
+          </div>
         </div>
       );
     }
 
     if (!detailedAnalysis) return null;
+
+    if (!user) {
+      return (
+        <ResultTeaser
+          title={tr('Ihre Führungsanalyse ist fertig', 'Your leadership analysis is ready')}
+          lead={detailedAnalysis.management_summary}
+          locked={[
+            tr('Strategische Führungshebel für Ihren gewählten Weg', 'Strategic leadership levers for your chosen path'),
+            tr('Kulturelle Risiken und mögliche Nebenwirkungen', 'Cultural risks and possible side effects'),
+            tr('Impact-Prognose für Team-Performance und Motivation', 'Impact forecast for team performance and motivation'),
+            tr('Konkrete nächste Schritte für die Umsetzung', 'Concrete next steps for implementation')
+          ]}
+        />
+      );
+    }
 
     return (
       <div className="max-w-6xl mx-auto py-12 animate-fade-in space-y-12 px-4">
