@@ -7,7 +7,8 @@ import {
   Target, RefreshCw, ChevronLeft, Building, MessageCircle, ShieldAlert, Zap, ListChecks, PlayCircle, Globe, Download, Printer, Info, Compass, Flag, TrendingUp, Users, Lightbulb, Save, AlertCircle, Map, Briefcase, BarChart3, ShieldCheck, Mail, X
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Auth } from '../components/Auth';
+import { ResultTeaser } from '../components/ResultTeaser';
+import { AiWaiting } from '../components/AiWaiting';
 import { saveProjectSession } from '../services/firebase';
 import { OrgContextForm } from '../components/OrgContextForm';
 
@@ -193,6 +194,12 @@ export const StrategyClarifier: React.FC<StrategyClarifierProps> = ({ user, setV
               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{tr('Womit gewinnen wir?', 'What do we win with?')}</label>
               <textarea value={context.win_with} onChange={e => setContext({...context, win_with: e.target.value})} className="w-full h-24 p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-blue resize-none" placeholder={tr('Technologie, Preis, Service ...', 'Technology, price, service ...')} />
             </div>
+            {loading && (
+              <AiWaiting
+                messages={language === 'de' ? ['Ihre Ausgangslage wird analysiert …', 'Strategische Optionen werden entwickelt …', 'Optionen werden gegeneinander abgegrenzt …'] : ['Analyzing your starting point …', 'Developing strategic options …', 'Differentiating the options …']}
+                hint={tr('Das dauert meist 5–10 Sekunden.', 'This usually takes 5–10 seconds.')}
+              />
+            )}
             <button onClick={startOptionsGeneration} disabled={loading || !context.win_with} className="w-full bg-hs-blue text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-lg flex items-center justify-center">
               {loading ? <Loader2 className="animate-spin mr-3" /> : <Sparkles className="mr-3" />}
               Optionen ermitteln
@@ -255,29 +262,50 @@ export const StrategyClarifier: React.FC<StrategyClarifierProps> = ({ user, setV
   );
 
   const renderResult = () => {
-    if (!user) return <Auth inline={true} />;
-    
     if (loading) return (
-      <div className="max-w-4xl mx-auto py-20 text-center px-4">
-        <Loader2 size={64} className="animate-spin mx-auto text-hs-blue mb-6" />
-        <h2 className="text-2xl font-black text-hs-blue uppercase animate-pulse">{t('strat.result.generating')}</h2>
-      </div>
+      <AiWaiting
+        messages={language === 'de' ? (
+          ['Ihre Antworten werden ausgewertet …', 'Strategische Hebel werden abgeleitet …', 'Initiativen und Roadmap werden aufgebaut …', 'Risiken werden bewertet …']
+        ) : (
+          ['Evaluating your answers …', 'Deriving strategic levers …', 'Building initiatives and roadmap …', 'Assessing risks …']
+        )}
+        hint={tr('Der Strategie-Plan ist umfangreich, das dauert meist 20–40 Sekunden.', 'The strategy plan is extensive and usually takes 20–40 seconds.')}
+      />
     );
 
     if (apiError) return (
       <div className="max-w-4xl mx-auto py-20 text-center px-4">
         <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-red-100">
           <AlertCircle size={64} className="animate-bounce mx-auto text-red-500 mb-6" />
-          <h2 className="text-2xl font-black text-hs-blue uppercase mb-4">{language === 'de' ? 'Ups! Da ist was schiefgelaufen.' : 'Oops! Something went wrong.'}</h2>
+          <h2 className="text-2xl font-black text-hs-blue uppercase mb-4">{tr('Ups! Da ist was schiefgelaufen.', 'Oops! Something went wrong.')}</h2>
           <p className="text-slate-500 mb-8">{apiError}</p>
           <button onClick={() => setStep('DEEP_DIVE')} className="bg-hs-blue text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-xl">
-             Nochmal versuchen
+             {tr('Nochmal versuchen', 'Try again')}
           </button>
         </div>
       </div>
     );
 
     if (!plan) return null;
+
+    if (!user) {
+      const initiatives = plan.implementation?.initiative_portfolio?.length || 0;
+      const phases = plan.roadmap?.length || 0;
+      const risks = plan.risks?.length || 0;
+      return (
+        <ResultTeaser
+          title={tr('Ihr Strategie-Plan ist fertig', 'Your strategy plan is ready')}
+          lead={plan.one_page_strategy?.vision_statement}
+          locked={[
+            tr('Ein-Seiten-Strategie mit Zielgruppe und Nutzenversprechen', 'One-page strategy with target group and value proposition'),
+            tr(`${initiatives} priorisierte Initiativen mit KPIs`, `${initiatives} prioritized initiatives with KPIs`),
+            tr(`Roadmap mit ${phases} Phasen und Meilensteinen`, `Roadmap with ${phases} phases and milestones`),
+            tr(`${risks} Risiken mit Gegenmaßnahmen`, `${risks} risks with mitigations`),
+          ]}
+        />
+      );
+    }
+
 
     return (
       <div className="max-w-6xl mx-auto py-12 space-y-12 animate-fade-in px-4">
@@ -294,7 +322,7 @@ export const StrategyClarifier: React.FC<StrategyClarifierProps> = ({ user, setV
                 <button onClick={() => window.print()} className="bg-white/10 hover:bg-white/20 p-2 rounded-full"><Printer size={18}/></button>
               </div>
             </div>
-            <h1 className="text-[10px] font-black uppercase tracking-[0.5em] text-hs-accent mb-4">Finaler Strategie-Plan</h1>
+            <h1 className="text-[10px] font-black uppercase tracking-[0.5em] text-hs-accent mb-4">{tr('Finaler Strategie-Plan', 'Final strategy plan')}</h1>
             <h2 className="text-5xl font-black uppercase tracking-tight mb-8 leading-none">{plan.one_page_strategy.vision_statement}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                <div>
@@ -312,7 +340,7 @@ export const StrategyClarifier: React.FC<StrategyClarifierProps> = ({ user, setV
         {/* Implementation Logic */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
            <div className="lg:col-span-2 bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100">
-              <h3 className="text-2xl font-black text-hs-blue uppercase mb-8 flex items-center"><TrendingUp className="mr-3 text-hs-orange" /> Initiative Portfolio</h3>
+              <h3 className="text-2xl font-black text-hs-blue uppercase mb-8 flex items-center"><TrendingUp className="mr-3 text-hs-orange" /> {tr('Initiativen-Portfolio', 'Initiative portfolio')}</h3>
               <div className="space-y-6">
                  {plan.implementation.initiative_portfolio.map((init, i) => (
                    <div key={i} className="flex items-center space-x-6 p-6 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-hs-blue transition-all">
@@ -328,7 +356,7 @@ export const StrategyClarifier: React.FC<StrategyClarifierProps> = ({ user, setV
            </div>
            <div className="space-y-8">
               <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 h-full">
-                 <h3 className="text-xl font-black text-hs-blue uppercase mb-6 flex items-center"><BarChart3 className="mr-3 text-hs-accent" /> KPIs</h3>
+                 <h3 className="text-xl font-black text-hs-blue uppercase mb-6 flex items-center"><BarChart3 className="mr-3 text-hs-accent" /> {tr('Kennzahlen (KPIs)', 'KPIs')}</h3>
                  <div className="space-y-6">
                     {plan.implementation.kpi_framework.map((kpi, i) => (
                       <div key={i} className="border-b border-slate-100 pb-4 last:border-0">
@@ -343,7 +371,7 @@ export const StrategyClarifier: React.FC<StrategyClarifierProps> = ({ user, setV
 
         {/* Roadmap */}
         <div className="bg-white p-12 rounded-[4rem] shadow-xl border border-slate-100">
-           <h3 className="text-2xl font-black text-hs-blue uppercase mb-12 text-center">Implementation Roadmap</h3>
+           <h3 className="text-2xl font-black text-hs-blue uppercase mb-12 text-center">{tr('Umsetzungs-Roadmap', 'Implementation roadmap')}</h3>
            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {plan.roadmap.map((phase, i) => (
                 <div key={i} className="relative p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 flex flex-col">
@@ -363,7 +391,7 @@ export const StrategyClarifier: React.FC<StrategyClarifierProps> = ({ user, setV
 
         {/* Risk Mitigation */}
         <div className="bg-hs-orange/10 p-10 rounded-[3rem] border border-hs-orange/20">
-           <h3 className="text-xl font-black text-hs-orange uppercase mb-8 flex items-center"><ShieldCheck className="mr-3" /> Risk Assessment</h3>
+           <h3 className="text-xl font-black text-hs-orange uppercase mb-8 flex items-center"><ShieldCheck className="mr-3" /> {tr('Risikobewertung', 'Risk assessment')}</h3>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {plan.risks.map((risk, i) => (
                 <div key={i} className="bg-white p-6 rounded-2xl shadow-sm flex items-start space-x-4">
