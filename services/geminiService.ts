@@ -330,12 +330,22 @@ export const generateCultureAnalysisPlan = async (stories: any, ratings: any[], 
 // Generate strategy options
 export const generateStrategyOptions = async (context: any, lang: 'de' | 'en' = 'de'): Promise<StrategyOption[]> => {
   const prompt = `Generiere 3 Strategie-Optionen. Kontext: ${JSON.stringify(context)}. Sprache: ${lang}. Antworte in JSON: [{id: string, title: string, description: string, opportunity_space: string}]`;
-  const response = await generateContent({
-    model: modelName,
-    contents: prompt,
-    config: { responseMimeType: "application/json" }
-  });
-  return safeParse(response.text) || [];
+  const run = async (model: string) => {
+    const response = await generateContent({
+      model,
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
+    return safeParse(response.text);
+  };
+  // Schnelles Modell zuerst, bei unbrauchbarem Ergebnis einmal mit Pro wiederholen.
+  try {
+    const fast = await run(fastModelName);
+    if (Array.isArray(fast) && fast.length > 0 && fast[0]?.title) return fast;
+  } catch (e) {
+    console.error("Fast model failed, falling back to Pro:", e);
+  }
+  return (await run(modelName)) || [];
 };
 
 // Create a comprehensive strategy plan
