@@ -6,7 +6,7 @@ import {
   RefreshCw, ChevronLeft, Settings, Zap, ShieldAlert, PlayCircle, Users, Download, Save, AlertCircle, MessageSquareText, Send, TrendingUp, Target, BarChart3, ListChecks, Mail
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Auth } from '../components/Auth';
+import { ResultTeaser } from '../components/ResultTeaser';
 import { saveProjectSession } from '../services/firebase';
 import { OrgContextForm } from '../components/OrgContextForm';
 import { AiWaiting } from '../components/AiWaiting';
@@ -230,14 +230,21 @@ ${(finalResult.optimization_proposals?.long_term || []).map(p => `- ${p}`).join(
     if (!finalResult) return null;
     
     if (!user) {
+      const de = language === 'de';
+      const strengths = finalResult.strengths?.length || 0;
+      const weaknesses = finalResult.weaknesses?.length || 0;
+      const proposals = (finalResult.optimization_proposals?.short_term?.length || 0) + (finalResult.optimization_proposals?.long_term?.length || 0);
       return (
-        <div className="max-w-2xl mx-auto py-12 animate-fade-in">
-          <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 text-center mb-10">
-            <h2 className="text-2xl font-black text-hs-blue uppercase mb-4">Audit abgeschlossen</h2>
-            <p className="text-slate-500 mb-0">Bitte melden Sie sich an oder erstellen Sie ein Konto, um Ihr detailliertes Analyse-Ergebnis freizuschalten.</p>
-          </div>
-          <Auth inline={true} />
-        </div>
+        <ResultTeaser
+          title={de ? 'Audit abgeschlossen' : 'Audit completed'}
+          score={{ label: t('org.result.score'), value: finalResult.maturity_score, max: 100 }}
+          lead={finalResult.executive_summary}
+          locked={[
+            de ? `${strengths} Stärken Ihrer Organisation` : `${strengths} strengths of your organization`,
+            de ? `${weaknesses} Handlungsfelder` : `${weaknesses} areas for action`,
+            de ? `${proposals} konkrete Maßnahmen, kurz- und langfristig` : `${proposals} concrete measures, short and long term`,
+          ]}
+        />
       );
     }
 
