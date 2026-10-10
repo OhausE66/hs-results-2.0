@@ -124,6 +124,38 @@ interface LeadershipRadarProps {
 export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.ReactElement => {
   const { t, language } = useLanguage();
   const tr = (de: string, en: string) => language === 'de' ? de : en;
+  const displayPath = (path: string) => ({ Struktur: tr('Struktur', 'Structure'), Kultur: tr('Kultur', 'Culture'), Kompetenz: tr('Kompetenz', 'Capability') }[path] || path);
+  const instrumentTitle = (key: keyof typeof INSTRUMENT_TEMPLATES) => ({
+    appraisal: tr('Mitarbeiterjahresgespräch', 'Annual performance review'),
+    targets: tr('Zielvereinbarung', 'Goal agreement'),
+    delegation: tr('Delegations-Framework', 'Delegation framework'),
+    evaluation: tr('Leistungsbewertung', 'Performance evaluation')
+  }[key]);
+  const instrumentSection = (key: keyof typeof INSTRUMENT_TEMPLATES, index: number) => {
+    const translations: Record<string, Array<{ h: string; p: string }>> = {
+      appraisal: [
+        { h: 'Review & achievements', p: 'Focus on the most important milestones of the past year. Where did the employee make a difference?' },
+        { h: 'Collaboration & leadership', p: 'Open reflection: What does the employee need from me as a leader to be even more effective?' },
+        { h: 'Personal development', p: 'Which capabilities should be strengthened deliberately next year? (Training/coaching)' }
+      ],
+      targets: [
+        { h: 'Hard targets (KPIs)', p: 'Measurable goals such as revenue, ticket rate, or project completions. Timely and SMART.' },
+        { h: 'Soft targets (behavioural)', p: 'Behavioural goals based on observed critical points (e.g. feedback culture).' },
+        { h: 'Resource commitment', p: 'Which tools, budgets, or freedoms will I provide?' }
+      ],
+      delegation: [
+        { h: 'Task context', p: 'Why is this task important to the bigger picture (scenario)?' },
+        { h: 'Responsibility framework', p: 'Can the employee decide (empowerment), or only provide support (assistance)?' },
+        { h: 'Check-in intervals', p: 'Set coordination dates to avoid micromanagement.' }
+      ],
+      evaluation: [
+        { h: 'Professional performance', p: 'Assess work results against the agreed standards.' },
+        { h: 'Systemic contribution', p: 'How does the employee affect team culture and the overall result?' },
+        { h: 'Future potential', p: 'Is the employee ready for more responsibility or a new role?' }
+      ]
+    };
+    return language === 'de' ? INSTRUMENT_TEMPLATES[key].sections[index] : translations[key][index];
+  };
   const [step, setStep] = useState<OnboardingStep>('LANDING');
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_DATA);
@@ -176,7 +208,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
 
   const handleSaveProfile = async () => {
     if (!user) {
-      alert("Bitte melden Sie sich an, um Ihr Profil im Vault zu speichern.");
+      alert(tr('Bitte melden Sie sich an, um Ihr Profil im Vault zu speichern.', 'Please sign in to save your profile to the vault.'));
       return;
     }
     if (apiError) return;
@@ -283,7 +315,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
   };
 
   const handleDeleteEmployee = (id: number) => {
-    if (confirm("Mitarbeiter wirklich aus dem Radar entfernen?")) {
+    if (confirm(tr('Mitarbeiter wirklich aus dem Radar entfernen?', 'Remove this employee from the radar?'))) {
       setEmployees(prev => prev.filter(e => e.id !== id));
     }
   };
@@ -348,7 +380,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
                   onClick={() => setStep('CONTEXT')}
                   className="bg-hs-blue text-white px-10 py-5 rounded-full font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-xl hover:-translate-y-1 flex items-center group"
                 >
-                  Individuelles Setup starten
+                  {tr('Individuelles Setup starten', 'Start individual setup')}
                   <ArrowRight size={20} className="ml-3 group-hover:translate-x-2 transition-transform" />
                 </button>
              </div>
@@ -369,58 +401,58 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
         <div className="flex justify-between items-start mb-10">
           <div>
             <h2 className="text-3xl font-black text-hs-blue uppercase mb-2 flex items-center">
-              <Briefcase className="mr-3 text-hs-orange" /> Führungskontext
+              <Briefcase className="mr-3 text-hs-orange" /> {tr('Führungskontext', 'Leadership context')}
             </h2>
-            <p className="text-slate-500 uppercase text-[10px] font-black tracking-widest">Schritt 1: Rahmenbedingungen klären</p>
+            <p className="text-slate-500 uppercase text-[10px] font-black tracking-widest">{tr('Schritt 1: Rahmenbedingungen klären', 'Step 1: Clarify the framework')}</p>
           </div>
           <button 
             onClick={loadDemoProfile}
             className="flex items-center space-x-2 text-xs font-black uppercase text-hs-accent hover:text-hs-orange transition-colors bg-slate-50 px-5 py-3 rounded-full border border-slate-100 shadow-sm"
           >
             <Sparkles size={16} />
-            <span>Beispiel laden</span>
+            <span>{tr('Beispiel laden', 'Load example')}</span>
           </button>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Unternehmen / Organisation</label>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">{tr('Unternehmen / Organisation', 'Company / organisation')}</label>
             <input 
               type="text" 
               value={leaderContext.company}
               onChange={e => setLeaderContext({...leaderContext, company: e.target.value})}
               className="w-full p-5 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:ring-2 focus:ring-hs-orange/20"
-              placeholder="z.B. HS-Logistics GmbH"
+              placeholder={tr('z.B. HS-Logistics GmbH', 'e.g. HS Logistics GmbH')}
             />
           </div>
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Anzahl Mitarbeiter (Gesamt)</label>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">{tr('Anzahl Mitarbeiter (Gesamt)', 'Number of employees (total)')}</label>
             <input 
               type="number" 
               value={leaderContext.employeeCount}
               onChange={e => setLeaderContext({...leaderContext, employeeCount: e.target.value})}
               className="w-full p-5 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:ring-2 focus:ring-hs-orange/20"
-              placeholder="z.B. 150"
+              placeholder={tr('z.B. 150', 'e.g. 150')}
             />
           </div>
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Ihre Position / Rolle</label>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">{tr('Ihre Position / Rolle', 'Your position / role')}</label>
             <input 
               type="text" 
               value={leaderContext.position}
               onChange={e => setLeaderContext({...leaderContext, position: e.target.value})}
               className="w-full p-5 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:ring-2 focus:ring-hs-orange/20"
-              placeholder="z.B. Abteilungsleitung Operations"
+              placeholder={tr('z.B. Abteilungsleitung Operations', 'e.g. Head of Operations')}
             />
           </div>
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Führungsspanne (Direkte Reports)</label>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">{tr('Führungsspanne (Direkte Reports)', 'Span of control (direct reports)')}</label>
             <input 
               type="number" 
               value={leaderContext.spanOfControl}
               onChange={e => setLeaderContext({...leaderContext, spanOfControl: e.target.value})}
               className="w-full p-5 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:ring-2 focus:ring-hs-orange/20"
-              placeholder="z.B. 8"
+              placeholder={tr('z.B. 8', 'e.g. 8')}
             />
           </div>
         </div>
@@ -431,14 +463,14 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
             disabled={!leaderContext.company || !leaderContext.position}
             className="flex-grow py-5 bg-hs-blue text-white rounded-3xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-xl disabled:opacity-30 flex items-center justify-center group"
           >
-            Herausforderungen skizzieren <ArrowRight size={20} className="ml-3 group-hover:translate-x-2 transition-transform" />
+            {tr('Herausforderungen skizzieren', 'Outline challenges')} <ArrowRight size={20} className="ml-3 group-hover:translate-x-2 transition-transform" />
           </button>
           <button 
             onClick={() => setStep('TEAM_SKETCH')}
             disabled={!leaderContext.company || !leaderContext.position}
             className="flex-grow py-5 bg-white border-2 border-hs-blue text-hs-blue rounded-3xl font-black uppercase tracking-widest hover:bg-hs-blue hover:text-white transition-all shadow-md disabled:opacity-30 flex items-center justify-center group"
           >
-            Mein Team führen <Users size={20} className="ml-3 group-hover:scale-110 transition-transform" />
+            {tr('Mein Team führen', 'Lead my team')} <Users size={20} className="ml-3 group-hover:scale-110 transition-transform" />
           </button>
         </div>
       </div>
@@ -451,15 +483,15 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
         <div className="flex justify-between items-end mb-10">
           <div>
             <h2 className="text-3xl font-black text-hs-blue uppercase mb-2 flex items-center">
-              <Users className="mr-3 text-hs-orange" /> Mein Team skizzieren
+              <Users className="mr-3 text-hs-orange" /> {tr('Mein Team skizzieren', 'Sketch my team')}
             </h2>
-            <p className="text-slate-500 uppercase text-[10px] font-black tracking-widest">Einzelne Personen erfassen und bewerten</p>
+            <p className="text-slate-500 uppercase text-[10px] font-black tracking-widest">{tr('Einzelne Personen erfassen und bewerten', 'Capture and assess individual people')}</p>
           </div>
           <button 
             onClick={() => setEditingEmployee({ name: '', role: '', performance: 70, motivation: 70, workload: 50, department: leaderContext.company || 'Team', hbdiQuadrant: 'A', observations: { positive: [], critical: [] } })}
             className="bg-hs-orange text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-hs-blue transition-all flex items-center"
           >
-            <UserPlus size={18} className="mr-2" /> Person hinzufügen
+            <UserPlus size={18} className="mr-2" /> {tr('Person hinzufügen', 'Add person')}
           </button>
         </div>
 
@@ -480,13 +512,13 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
               
               <div className="space-y-4">
                 <div>
-                   <div className="flex justify-between text-[8px] font-black uppercase text-slate-400 mb-1"><span>Performance</span><span>{e.performance}%</span></div>
+                   <div className="flex justify-between text-[8px] font-black uppercase text-slate-400 mb-1"><span>{tr('Performance', 'Performance')}</span><span>{e.performance}%</span></div>
                    <div className="w-full bg-slate-200 h-1 rounded-full overflow-hidden">
                       <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${e.performance}%` }} />
                    </div>
                 </div>
                 <div>
-                   <div className="flex justify-between text-[8px] font-black uppercase text-slate-400 mb-1"><span>Motivation</span><span>{e.motivation}%</span></div>
+                   <div className="flex justify-between text-[8px] font-black uppercase text-slate-400 mb-1"><span>{tr('Motivation', 'Motivation')}</span><span>{e.motivation}%</span></div>
                    <div className="w-full bg-slate-200 h-1 rounded-full overflow-hidden">
                       <div className="bg-hs-orange h-full rounded-full" style={{ width: `${e.motivation}%` }} />
                    </div>
@@ -501,13 +533,13 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
             onClick={() => setStep('CONTEXT')}
             className="flex-1 py-5 border-2 border-slate-100 text-slate-400 rounded-3xl font-black uppercase tracking-widest hover:bg-slate-50 transition-all"
           >
-            Zurück zum Kontext
+            {tr('Zurück zum Kontext', 'Back to context')}
           </button>
           <button 
             onClick={() => setStep('DASHBOARD')}
             className="flex-[2] py-5 bg-hs-blue text-white rounded-3xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-xl flex items-center justify-center group"
           >
-            Team-Dashboard öffnen <ArrowRight size={20} className="ml-3 group-hover:translate-x-2 transition-transform" />
+            {tr('Team-Dashboard öffnen', 'Open team dashboard')} <ArrowRight size={20} className="ml-3 group-hover:translate-x-2 transition-transform" />
           </button>
         </div>
       </div>
@@ -515,15 +547,15 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
       {editingEmployee && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4 animate-fade-in">
            <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl p-10">
-              <h3 className="text-2xl font-black text-hs-blue uppercase mb-8">{editingEmployee.id ? 'Mitarbeiter bearbeiten' : 'Person hinzufügen'}</h3>
+              <h3 className="text-2xl font-black text-hs-blue uppercase mb-8">{editingEmployee.id ? tr('Mitarbeiter bearbeiten', 'Edit employee') : tr('Person hinzufügen', 'Add person')}</h3>
               <div className="space-y-6">
                  <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Name</label>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{tr('Name', 'Name')}</label>
                     <input value={editingEmployee.name} onChange={e => setEditingEmployee({...editingEmployee, name: e.target.value})} className="w-full p-4 bg-slate-50 rounded-xl border border-slate-100 outline-none focus:ring-2 focus:ring-hs-blue/20" placeholder="Name..." />
                  </div>
                  <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Rolle</label>
-                    <input value={editingEmployee.role} onChange={e => setEditingEmployee({...editingEmployee, role: e.target.value})} className="w-full p-4 bg-slate-50 rounded-xl border border-slate-100 outline-none focus:ring-2 focus:ring-hs-blue/20" placeholder="Rolle..." />
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{tr('Rolle', 'Role')}</label>
+                    <input value={editingEmployee.role} onChange={e => setEditingEmployee({...editingEmployee, role: e.target.value})} className="w-full p-4 bg-slate-50 rounded-xl border border-slate-100 outline-none focus:ring-2 focus:ring-hs-blue/20" placeholder={tr('Rolle...', 'Role...')} />
                  </div>
                  <div className="grid grid-cols-2 gap-8">
                     <div>
@@ -536,8 +568,8 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
                     </div>
                  </div>
                  <div className="flex justify-end space-x-3 pt-6">
-                    <button onClick={() => setEditingEmployee(null)} className="px-6 py-3 rounded-xl font-bold uppercase text-xs text-slate-400">Abbrechen</button>
-                    <button onClick={handleSaveEmployee} className="px-10 py-3 bg-hs-blue text-white rounded-xl font-black uppercase text-xs shadow-lg hover:bg-hs-orange transition-all">Speichern</button>
+                    <button onClick={() => setEditingEmployee(null)} className="px-6 py-3 rounded-xl font-bold uppercase text-xs text-slate-400">{tr('Abbrechen', 'Cancel')}</button>
+                    <button onClick={handleSaveEmployee} className="px-10 py-3 bg-hs-blue text-white rounded-xl font-black uppercase text-xs shadow-lg hover:bg-hs-orange transition-all">{tr('Speichern', 'Save')}</button>
                  </div>
               </div>
            </div>
@@ -552,7 +584,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
         <div className="flex justify-between items-start mb-2">
            <div className="flex items-center space-x-3">
               <HelpCircle className="text-hs-orange" />
-              <h2 className="text-3xl font-black text-hs-blue uppercase">Führungsherausforderungen</h2>
+              <h2 className="text-3xl font-black text-hs-blue uppercase">{tr('Führungsherausforderungen', 'Leadership challenges')}</h2>
            </div>
            <button 
              onClick={handleSaveProfile}
@@ -560,20 +592,20 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
              className={`flex items-center space-x-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${saveStatus === 'saved' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400 hover:text-hs-blue'}`}
            >
               {saveStatus === 'saving' ? <Loader2 size={12} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={12} /> : <Save size={12} />}
-              <span>Profil speichern</span>
+              <span>{tr('Profil speichern', 'Save profile')}</span>
            </button>
         </div>
-        <p className="text-slate-500 mb-10 uppercase text-[10px] font-black tracking-widest">Schritt 2: Aktuelle Situation skizzieren</p>
+        <p className="text-slate-500 mb-10 uppercase text-[10px] font-black tracking-widest">{tr('Schritt 2: Aktuelle Situation skizzieren', 'Step 2: Outline the current situation')}</p>
         
         <div className="space-y-6 mb-10">
           <p className="text-slate-600 leading-relaxed font-medium">
-            Beschreiben Sie kurz Ihre aktuell größten Herausforderungen. Geht es um Team-Dynamiken, strukturelle Engpässe oder Ihre eigene Führungsrolle?
+            {tr('Beschreiben Sie kurz Ihre aktuell größten Herausforderungen. Geht es um Team-Dynamiken, strukturelle Engpässe oder Ihre eigene Führungsrolle?', 'Briefly describe your current biggest challenges. Are they about team dynamics, structural bottlenecks, or your own leadership role?')}
           </p>
           <textarea 
             value={leaderContext.challengeSketch}
             onChange={e => setLeaderContext({...leaderContext, challengeSketch: e.target.value})}
             className="w-full h-64 p-8 bg-slate-50 border-2 border-slate-100 rounded-[2.5rem] outline-none focus:border-hs-orange transition-all text-lg shadow-inner resize-none"
-            placeholder="z.B. Das Team ist fachlich exzellent, aber es herrscht Silo-Denken. Ich fühle mich oft im Mikromanagement gefangen und habe zu wenig Zeit für Strategie..."
+            placeholder={tr('z.B. Das Team ist fachlich exzellent, aber es herrscht Silo-Denken. Ich fühle mich oft im Mikromanagement gefangen und habe zu wenig Zeit für Strategie...', 'e.g. The team is technically excellent, but silo thinking is prevalent. I often feel trapped in micromanagement and have too little time for strategy...')}
           />
         </div>
 
@@ -582,14 +614,14 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
             onClick={() => setStep('CONTEXT')}
             className="flex-1 py-5 border-2 border-slate-100 text-slate-400 rounded-3xl font-black uppercase tracking-widest hover:bg-slate-50 transition-all"
           >
-            Zurück
+            {tr('Zurück', 'Back')}
           </button>
           <button 
             onClick={generateSystemicQuestions}
             disabled={leaderContext.challengeSketch.length < 20}
             className="flex-[2] py-5 bg-hs-blue text-white rounded-3xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-xl disabled:opacity-30 flex items-center justify-center group"
           >
-            Systemische Reflexion <Sparkles size={20} className="ml-3 group-hover:scale-110 transition-transform" />
+            {tr('Systemische Reflexion', 'Systemic reflection')} <Sparkles size={20} className="ml-3 group-hover:scale-110 transition-transform" />
           </button>
         </div>
       </div>
@@ -601,7 +633,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
       <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-slate-100">
         <div className="flex justify-between items-start mb-2">
           <h2 className="text-3xl font-black text-hs-blue uppercase flex items-center">
-            <Brain className="mr-3 text-hs-accent" /> Systemische Reflexion
+            <Brain className="mr-3 text-hs-accent" /> {tr('Systemische Reflexion', 'Systemic reflection')}
           </h2>
           <button 
             onClick={handleSaveProfile}
@@ -609,10 +641,10 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
             className={`flex items-center space-x-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${saveStatus === 'saved' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400 hover:text-hs-blue'}`}
           >
             {saveStatus === 'saving' ? <Loader2 size={12} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={12} /> : <Save size={12} />}
-            <span>Profil speichern</span>
+            <span>{tr('Profil speichern', 'Save profile')}</span>
           </button>
         </div>
-        <p className="text-slate-500 mb-10 uppercase text-[10px] font-black tracking-widest">Schritt 3: Den Kern freilegen</p>
+        <p className="text-slate-500 mb-10 uppercase text-[10px] font-black tracking-widest">{tr('Schritt 3: Den Kern freilegen', 'Step 3: Uncover the core')}</p>
         
         {loadingQuestions ? (
           <AiWaiting
@@ -654,7 +686,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
                     setReflectionAnswers(newAnswers);
                   }}
                   className="w-full p-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-hs-accent transition-all text-sm italic"
-                  placeholder="Ihre Gedanken dazu..."
+                  placeholder={tr('Ihre Gedanken dazu...', 'Your thoughts on this...')}
                 />
               </div>
             ))}
@@ -663,7 +695,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
               onClick={() => setStep('DECISION')}
               className="w-full py-5 bg-hs-blue text-white rounded-3xl font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-xl flex items-center justify-center group"
             >
-              Zur Entscheidung gelangen <ArrowDownCircle size={20} className="ml-3 group-hover:translate-y-1 transition-transform" />
+              {tr('Zur Entscheidung gelangen', 'Continue to the decision')} <ArrowDownCircle size={20} className="ml-3 group-hover:translate-y-1 transition-transform" />
             </button>
           </div>
         )}
@@ -675,55 +707,55 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
     <div className="max-w-4xl mx-auto py-12 animate-fade-in px-4">
       <div className="bg-white p-12 rounded-[4rem] shadow-2xl border-t-[16px] border-hs-orange relative">
         <div className="flex justify-between items-start mb-2">
-          <h2 className="text-4xl font-black text-hs-blue uppercase">Die Entscheidung</h2>
+          <h2 className="text-4xl font-black text-hs-blue uppercase">{tr('Die Entscheidung', 'The decision')}</h2>
           <button 
             onClick={handleSaveProfile}
             disabled={saveStatus !== 'idle'}
             className={`flex items-center space-x-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${saveStatus === 'saved' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400 hover:text-hs-blue'}`}
           >
             {saveStatus === 'saving' ? <Loader2 size={12} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={12} /> : <Save size={12} />}
-            <span>Profil speichern</span>
+            <span>{tr('Profil speichern', 'Save profile')}</span>
           </button>
         </div>
-        <p className="text-slate-500 mb-10 uppercase text-[10px] font-black tracking-widest">Schritt 4: Was will ich verändern?</p>
+        <p className="text-slate-500 mb-10 uppercase text-[10px] font-black tracking-widest">{tr('Schritt 4: Was will ich verändern?', 'Step 4: What do I want to change?')}</p>
         
         <div className="space-y-8 mb-12">
            <p className="text-lg text-slate-600 font-bold italic border-l-4 border-hs-accent pl-6 py-2 bg-slate-50 rounded-r-2xl">
-             "Nach dieser Reflexion ist mir klargeworden, dass die wichtigste Veränderung folgende ist..."
+             {tr('„Nach dieser Reflexion ist mir klargeworden, dass die wichtigste Veränderung folgende ist …“', '“After this reflection, I have realized that the most important change is …”')}
            </p>
            <textarea 
              value={leaderContext.finalDecision}
              onChange={e => setLeaderContext({...leaderContext, finalDecision: e.target.value})}
              className="w-full h-40 p-8 bg-white border-4 border-slate-100 rounded-[2.5rem] outline-none focus:border-hs-orange transition-all text-xl font-black text-hs-blue shadow-lg"
-             placeholder="Formulieren Sie Ihr Veränderungsziel..."
+             placeholder={tr('Formulieren Sie Ihr Veränderungsziel...', 'Formulate your change objective...')}
            />
         </div>
 
-        <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 text-center">Alternative Wege zur Umsetzung</h3>
+        <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 text-center">{tr('Alternative Wege zur Umsetzung', 'Alternative paths to implementation')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
            <button 
              onClick={() => generateDetailedAnalysis('Struktur')}
              className="p-6 rounded-3xl border-2 transition-all text-center group border-transparent bg-slate-50 hover:border-hs-blue hover:bg-white"
            >
               <LayoutDashboard size={32} className="mx-auto mb-4 text-hs-blue group-hover:scale-110 transition-transform" />
-              <p className="text-[10px] font-black uppercase mb-1">Struktur</p>
-              <p className="text-xs font-bold text-slate-500">Optimierung der Rollen & Dashboards</p>
+              <p className="text-[10px] font-black uppercase mb-1">{tr('Struktur', 'Structure')}</p>
+              <p className="text-xs font-bold text-slate-500">{tr('Optimierung der Rollen & Dashboards', 'Optimise roles & dashboards')}</p>
            </button>
            <button 
              onClick={() => generateDetailedAnalysis('Kultur')}
              className="p-6 rounded-3xl border-2 transition-all text-center group border-transparent bg-slate-50 hover:border-hs-orange hover:bg-white"
            >
               <Users size={32} className="mx-auto mb-4 text-hs-orange group-hover:scale-110 transition-transform" />
-              <p className="text-[10px] font-black uppercase mb-1">Kultur</p>
-              <p className="text-xs font-bold text-slate-500">Dialog-Formate & Team-Spirit</p>
+              <p className="text-[10px] font-black uppercase mb-1">{tr('Kultur', 'Culture')}</p>
+              <p className="text-xs font-bold text-slate-500">{tr('Dialog-Formate & Team-Spirit', 'Dialogue formats & team spirit')}</p>
            </button>
            <button 
              onClick={() => generateDetailedAnalysis('Kompetenz')}
              className="p-6 rounded-3xl border-2 transition-all text-center group border-transparent bg-slate-50 hover:border-hs-accent hover:bg-white"
            >
               <Zap size={32} className="mx-auto mb-4 text-hs-accent group-hover:scale-110 transition-transform" />
-              <p className="text-[10px] font-black uppercase mb-1">Kompetenz</p>
-              <p className="text-xs font-bold text-slate-500">Training der Führungsinstrumente</p>
+              <p className="text-[10px] font-black uppercase mb-1">{tr('Kompetenz', 'Capability')}</p>
+              <p className="text-xs font-bold text-slate-500">{tr('Training der Führungsinstrumente', 'Leadership tools training')}</p>
            </button>
         </div>
       </div>
@@ -793,17 +825,17 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
                     className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all ${saveStatus === 'saved' ? 'bg-emerald-500 text-white' : 'bg-white/10 hover:bg-white/20'}`}
                   >
                     {saveStatus === 'saving' ? <Loader2 size={14} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={14} /> : <Save size={14} />}
-                    <span>{saveStatus === 'saved' ? 'Bericht gesichert' : 'Strategie speichern'}</span>
+                    <span>{saveStatus === 'saved' ? tr('Bericht gesichert', 'Report saved') : tr('Strategie speichern', 'Save strategy')}</span>
                   </button>
                </div>
-               <h1 className="text-5xl font-black uppercase tracking-tight mb-8 leading-none">Führungs-Analyse: {leaderContext.chosenPath}</h1>
+               <h1 className="text-5xl font-black uppercase tracking-tight mb-8 leading-none">{tr('Führungs-Analyse', 'Leadership analysis')}: {displayPath(leaderContext.chosenPath)}</h1>
                <p className="text-2xl text-slate-300 font-bold max-w-4xl leading-relaxed italic">"{detailedAnalysis.management_summary}"</p>
             </div>
          </div>
 
          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
             <div className="bg-white p-10 rounded-[3rem] shadow-xl border-l-8 border-hs-accent">
-               <h3 className="text-xl font-black text-hs-blue uppercase mb-6 flex items-center"><Target className="mr-3 text-hs-accent" /> Strategische Hebel</h3>
+               <h3 className="text-xl font-black text-hs-blue uppercase mb-6 flex items-center"><Target className="mr-3 text-hs-accent" /> {tr('Strategische Hebel', 'Strategic levers')}</h3>
                <ul className="space-y-4">
                   {detailedAnalysis.strategic_levers.map((l: string, i: number) => (
                     <li key={i} className="flex items-start text-slate-700 font-bold bg-slate-50 p-4 rounded-2xl border border-slate-100">
@@ -813,7 +845,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
                </ul>
             </div>
             <div className="bg-white p-10 rounded-[3rem] shadow-xl border-l-8 border-hs-orange">
-               <h3 className="text-xl font-black text-hs-blue uppercase mb-6 flex items-center"><AlertCircle className="mr-3 text-hs-orange" /> Kulturelle Risiken</h3>
+               <h3 className="text-xl font-black text-hs-blue uppercase mb-6 flex items-center"><AlertCircle className="mr-3 text-hs-orange" /> {tr('Kulturelle Risiken', 'Cultural risks')}</h3>
                <ul className="space-y-4">
                   {detailedAnalysis.cultural_risks.map((r: string, i: number) => (
                     <li key={i} className="flex items-start text-slate-700 font-bold bg-slate-50 p-4 rounded-2xl border border-slate-100">
@@ -826,11 +858,11 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
 
          <div className="bg-slate-900 text-white p-12 rounded-[4rem] shadow-2xl relative overflow-hidden">
             <div className="absolute -bottom-10 -left-10 text-white/5"><TrendingUp size={240} /></div>
-            <h3 className="text-2xl font-black uppercase mb-8 tracking-widest text-hs-accent">Impact Prognose</h3>
+            <h3 className="text-2xl font-black uppercase mb-8 tracking-widest text-hs-accent">{tr('Impact Prognose', 'Impact forecast')}</h3>
             <p className="text-xl leading-relaxed text-slate-300 font-medium">{detailedAnalysis.impact_analysis}</p>
             
             <div className="mt-12 pt-10 border-t border-white/10">
-               <h4 className="text-sm font-black uppercase tracking-widest mb-6">Empfohlene nächste Schritte</h4>
+               <h4 className="text-sm font-black uppercase tracking-widest mb-6">{tr('Empfohlene nächste Schritte', 'Recommended next steps')}</h4>
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {detailedAnalysis.next_steps.map((s: string, i: number) => (
                     <div key={i} className="bg-white/5 p-6 rounded-3xl border border-white/10">
@@ -846,7 +878,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
            onClick={() => setStep('DASHBOARD')}
            className="w-full bg-hs-blue text-white py-6 rounded-[2.5rem] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-hs-orange transition-all flex items-center justify-center group"
          >
-            Zum operativen Führungs-Dashboard <ArrowRight className="ml-4 group-hover:translate-x-2 transition-transform" />
+            {tr('Zum operativen Führungs-Dashboard', 'Go to the operational leadership dashboard')} <ArrowRight className="ml-4 group-hover:translate-x-2 transition-transform" />
          </button>
       </div>
     );
@@ -858,8 +890,8 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
       <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4 animate-fade-in overflow-y-auto">
         <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl p-10 relative">
           <button onClick={() => setIsEditingTeam(false)} className="absolute top-8 right-8 p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={24}/></button>
-          <h2 className="text-3xl font-black text-hs-blue uppercase mb-2 flex items-center"><Settings className="mr-3 text-hs-orange" /> Team-Zusammensetzung</h2>
-          <p className="text-slate-400 uppercase text-[10px] font-black tracking-widest mb-10">Mitarbeiterprofile pflegen und aufstellen</p>
+          <h2 className="text-3xl font-black text-hs-blue uppercase mb-2 flex items-center"><Settings className="mr-3 text-hs-orange" /> {tr('Team-Zusammensetzung', 'Team composition')}</h2>
+          <p className="text-slate-400 uppercase text-[10px] font-black tracking-widest mb-10">{tr('Mitarbeiterprofile pflegen und aufstellen', 'Maintain and build employee profiles')}</p>
 
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -880,23 +912,23 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
                 className="p-6 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400 hover:border-hs-blue hover:text-hs-blue transition-all group"
               >
                 <UserPlus size={24} className="mb-2 group-hover:scale-110 transition-transform" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Hinzufügen</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">{tr('Hinzufügen', 'Add')}</span>
               </button>
             </div>
           </div>
           
           {editingEmployee && (
              <div className="mt-10 pt-10 border-t border-slate-100 animate-fade-in">
-                <h3 className="font-black text-hs-blue uppercase text-sm mb-6">{editingEmployee.id ? 'Profil bearbeiten' : 'Neues Profil anlegen'}</h3>
+                <h3 className="font-black text-hs-blue uppercase text-sm mb-6">{editingEmployee.id ? tr('Profil bearbeiten', 'Edit profile') : tr('Neues Profil anlegen', 'Create new profile')}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                   <div className="space-y-4">
                     <input value={editingEmployee.name} onChange={e => setEditingEmployee({...editingEmployee, name: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="Name..." />
-                    <input value={editingEmployee.role} onChange={e => setEditingEmployee({...editingEmployee, role: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="Rolle..." />
+                    <input value={editingEmployee.role} onChange={e => setEditingEmployee({...editingEmployee, role: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder={tr('Rolle...', 'Role...')} />
                     <select value={editingEmployee.hbdiQuadrant} onChange={e => setEditingEmployee({...editingEmployee, hbdiQuadrant: e.target.value as any})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none">
-                      <option value="A">HBDI Quadrant A (Rational)</option>
-                      <option value="B">HBDI Quadrant B (Organisatorisch)</option>
-                      <option value="C">HBDI Quadrant C (Emotional)</option>
-                      <option value="D">HBDI Quadrant D (Konzeptionell)</option>
+                      <option value="A">{tr('HBDI Quadrant A (Rational)', 'HBDI quadrant A (Rational)')}</option>
+                      <option value="B">{tr('HBDI Quadrant B (Organisatorisch)', 'HBDI quadrant B (Organisational)')}</option>
+                      <option value="C">{tr('HBDI Quadrant C (Emotional)', 'HBDI quadrant C (Emotional)')}</option>
+                      <option value="D">{tr('HBDI Quadrant D (Konzeptionell)', 'HBDI quadrant D (Conceptual)')}</option>
                     </select>
                   </div>
                   <div className="space-y-6">
@@ -911,8 +943,8 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
                   </div>
                 </div>
                 <div className="flex justify-end space-x-3">
-                   <button onClick={() => setEditingEmployee(null)} className="px-6 py-3 rounded-xl font-bold uppercase text-xs text-slate-400">Abbrechen</button>
-                   <button onClick={handleSaveEmployee} className="px-10 py-3 bg-hs-blue text-white rounded-xl font-black uppercase text-xs shadow-lg hover:bg-hs-orange transition-all">Speichern</button>
+                   <button onClick={() => setEditingEmployee(null)} className="px-6 py-3 rounded-xl font-bold uppercase text-xs text-slate-400">{tr('Abbrechen', 'Cancel')}</button>
+                   <button onClick={handleSaveEmployee} className="px-10 py-3 bg-hs-blue text-white rounded-xl font-black uppercase text-xs shadow-lg hover:bg-hs-orange transition-all">{tr('Speichern', 'Save')}</button>
                 </div>
              </div>
           )}
@@ -928,7 +960,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
                   <Zap className="text-hs-orange" size={24} />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-hs-accent">Individuelles Führungs-Profil</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-hs-accent">{tr('Individuelles Führungs-Profil', 'Individual leadership profile')}</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <button 
@@ -937,28 +969,28 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
                     className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all flex items-center border ${saveStatus === 'saved' ? 'bg-emerald-50 border-emerald-500' : 'bg-white/10 hover:bg-white/20 border-white/10'}`}
                   >
                      {saveStatus === 'saving' ? <Loader2 size={12} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={12} /> : <Save size={12} />}
-                     <span className="ml-2">{saveStatus === 'saved' ? 'Gespeichert' : 'Vault Sicherung'}</span>
+                     <span className="ml-2">{saveStatus === 'saved' ? tr('Gespeichert', 'Saved') : tr('Vault Sicherung', 'Save to vault')}</span>
                   </button>
                   <button 
                     onClick={() => setIsEditingTeam(true)}
                     className="bg-white/10 hover:bg-white/20 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all flex items-center border border-white/10"
                   >
-                    <Settings size={14} className="mr-2" /> Team aufstellen
+                    <Settings size={14} className="mr-2" /> {tr('Team aufstellen', 'Build team')}
                   </button>
                 </div>
              </div>
              <h2 className="text-3xl font-black uppercase mb-2 tracking-tight">{leaderContext.company || TEAM_SCENARIO.title}</h2>
-             <p className="text-sm font-bold text-hs-accent uppercase tracking-widest mb-4">{leaderContext.position} • Pfad: {leaderContext.chosenPath || 'Standard'}</p>
+             <p className="text-sm font-bold text-hs-accent uppercase tracking-widest mb-4">{leaderContext.position} • {tr('Pfad', 'Path')}: {leaderContext.chosenPath ? displayPath(leaderContext.chosenPath) : tr('Standard', 'Standard')}</p>
              <p className="text-lg text-slate-300 max-w-4xl leading-relaxed italic">"{leaderContext.finalDecision || leaderContext.challengeSketch || TEAM_SCENARIO.description}"</p>
              <div className="mt-8 flex items-center space-x-8">
                 <div>
-                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Strategischer Fokus</p>
-                   <p className="text-sm font-bold text-white">Transformation & Wirksamkeit</p>
+                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{tr('Strategischer Fokus', 'Strategic focus')}</p>
+                   <p className="text-sm font-bold text-white">{tr('Transformation & Wirksamkeit', 'Transformation & impact')}</p>
                 </div>
                 <div className="h-10 w-[1px] bg-white/10" />
                 <div>
-                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Team-Audit</p>
-                   <p className="text-sm font-bold text-white">{employees.length} Profile analysiert</p>
+                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{tr('Team-Audit', 'Team audit')}</p>
+                   <p className="text-sm font-bold text-white">{employees.length} {tr('Profile analysiert', 'profiles analysed')}</p>
                 </div>
              </div>
           </div>
@@ -968,7 +1000,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 flex flex-col items-center">
              <h3 className="text-xl font-black text-hs-blue uppercase mb-8 flex items-center self-start">
-                <LayoutDashboard className="mr-3 text-hs-orange" /> Team Dynamik Radar
+                <LayoutDashboard className="mr-3 text-hs-orange" /> {tr('Team Dynamik Radar', 'Team dynamics radar')}
              </h3>
              <div className="w-full h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -990,26 +1022,26 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              <div className="bg-white p-8 rounded-[2.5rem] shadow-md border-l-8 border-emerald-500 flex flex-col justify-between">
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Performance Avg</p>
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tr('Performance Avg', 'Performance avg.')}</p>
                 <p className="text-5xl font-black text-hs-blue">{Math.round(radarData[0].A)}%</p>
                 <div className="flex items-center text-emerald-600 text-xs font-bold mt-2">
-                   <TrendingUp size={14} className="mr-1" /> Aktiv gesteuert
+                   <TrendingUp size={14} className="mr-1" /> {tr('Aktiv gesteuert', 'Actively managed')}
                 </div>
              </div>
              <div className="bg-white p-8 rounded-[2.5rem] shadow-md border-l-8 border-hs-orange flex flex-col justify-between">
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Motivation Avg</p>
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tr('Motivation Avg', 'Motivation avg.')}</p>
                 <p className="text-5xl font-black text-hs-blue">{Math.round(radarData[1].A)}%</p>
                 <div className="flex items-center text-hs-orange text-xs font-bold mt-2">
-                   <Activity size={14} className="mr-1" /> Stabilisierend
+                   <Activity size={14} className="mr-1" /> {tr('Stabilisierend', 'Stabilising')}
                 </div>
              </div>
              <div className="col-span-full bg-slate-50 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col space-y-4">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Verfügbare Instrumente</h4>
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">{tr('Verfügbare Instrumente', 'Available tools')}</h4>
                 <div className="grid grid-cols-2 gap-3">
                    {Object.values(INSTRUMENT_TEMPLATES).map((inst, i) => (
                       <div key={i} className="flex items-center space-x-3 p-3 bg-white rounded-2xl border border-slate-100 shadow-sm">
                          <inst.icon size={16} className="text-hs-accent" />
-                         <span className="text-[10px] font-bold text-hs-blue uppercase">{inst.title}</span>
+                         <span className="text-[10px] font-bold text-hs-blue uppercase">{instrumentTitle(inst.id as keyof typeof INSTRUMENT_TEMPLATES)}</span>
                       </div>
                    ))}
                 </div>
@@ -1022,7 +1054,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
   const renderMatrix = () => (
     <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 animate-fade-in">
        <h3 className="text-xl font-black text-hs-blue uppercase mb-8 flex items-center">
-          <BarChart3 className="mr-3 text-hs-accent" /> Performance-Motivation Matrix
+          <BarChart3 className="mr-3 text-hs-accent" /> {tr('Performance-Motivations-Matrix', 'Performance-motivation matrix')}
        </h3>
        <div className="w-full h-[500px] relative">
           <ResponsiveContainer width="100%" height="100%">
@@ -1040,10 +1072,10 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
                 </Scatter>
              </ScatterChart>
           </ResponsiveContainer>
-          <div className="absolute top-0 left-0 text-[10px] font-black uppercase text-slate-300">Hohe Motivation</div>
-          <div className="absolute bottom-0 left-0 text-[10px] font-black uppercase text-slate-300">Niedrige Motivation</div>
-          <div className="absolute bottom-0 right-0 text-[10px] font-black uppercase text-slate-300">Hohe Leistung</div>
-          <div className="absolute bottom-0 left-0 text-[10px] font-black uppercase text-slate-300 transform rotate-90 origin-bottom-left ml-4">Motivation Axis</div>
+          <div className="absolute top-0 left-0 text-[10px] font-black uppercase text-slate-300">{tr('Hohe Motivation', 'High motivation')}</div>
+          <div className="absolute bottom-0 left-0 text-[10px] font-black uppercase text-slate-300">{tr('Niedrige Motivation', 'Low motivation')}</div>
+          <div className="absolute bottom-0 right-0 text-[10px] font-black uppercase text-slate-300">{tr('Hohe Leistung', 'High performance')}</div>
+          <div className="absolute bottom-0 left-0 text-[10px] font-black uppercase text-slate-300 transform rotate-90 origin-bottom-left ml-4">{tr('Motivationsachse', 'Motivation axis')}</div>
        </div>
     </div>
   );
@@ -1057,12 +1089,12 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
               type="text" 
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Mitarbeiter oder Abteilung suchen..."
+              placeholder={tr('Mitarbeiter oder Abteilung suchen...', 'Search employees or departments...')}
               className="w-full p-5 pl-16 bg-white rounded-3xl border border-slate-100 shadow-sm outline-none focus:border-hs-blue transition-all"
             />
           </div>
           <button onClick={() => setIsEditingTeam(true)} className="bg-hs-blue text-white px-8 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-hs-orange transition-all flex items-center">
-             <UserPlus size={18} className="mr-2" /> Team verwalten
+             <UserPlus size={18} className="mr-2" /> {tr('Team verwalten', 'Manage team')}
           </button>
        </div>
        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1078,17 +1110,17 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
                 <p className="text-xs font-bold text-hs-accent mb-6 uppercase tracking-widest">{e.role}</p>
                 
                 <div className="mb-6 space-y-2 flex-grow">
-                   <p className="text-[10px] font-black text-slate-300 uppercase mb-2">Beobachtungen (Manuell geflegt)</p>
+                   <p className="text-[10px] font-black text-slate-300 uppercase mb-2">{tr('Beobachtungen (Manuell gepflegt)', 'Observations (manually maintained)')}</p>
                    {e.observations?.positive && e.observations.positive.length > 0 ? e.observations.positive.slice(0, 1).map((o, idx) => (
                       <div key={idx} className="flex items-center text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-1.5 rounded-lg border border-emerald-100/50">
                          <CheckCircle size={10} className="mr-1.5 shrink-0" /> <span className="truncate">{o}</span>
                       </div>
-                   )) : <div className="text-[9px] text-slate-400 italic">Noch keine positiven Beobachtungen</div>}
+                   )) : <div className="text-[9px] text-slate-400 italic">{tr('Noch keine positiven Beobachtungen', 'No positive observations yet')}</div>}
                    {e.observations?.critical && e.observations.critical.length > 0 ? e.observations.critical.slice(0, 1).map((o, idx) => (
                       <div key={idx} className="flex items-center text-[10px] text-hs-orange font-bold bg-orange-50 px-2 py-1.5 rounded-lg border border-orange-100/50">
                          <AlertCircle size={10} className="mr-1.5 shrink-0" /> <span className="truncate">{o}</span>
                       </div>
-                   )) : <div className="text-[9px] text-slate-400 italic">Noch keine kritischen Beobachtungen</div>}
+                   )) : <div className="text-[9px] text-slate-400 italic">{tr('Noch keine kritischen Beobachtungen', 'No critical observations yet')}</div>}
                 </div>
 
                 <div className="space-y-4 mb-8">
@@ -1109,7 +1141,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
                   onClick={() => setSelectedEmployee(e)}
                   className="w-full py-4 bg-hs-blue text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-hs-orange transition-all shadow-md mt-auto"
                 >
-                  Führungs-Cockpit öffnen
+                  {tr('Führungs-Cockpit öffnen', 'Open leadership cockpit')}
                 </button>
              </div>
           ))}
@@ -1120,8 +1152,8 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
   const renderHBDI = () => (
     <div className="bg-white p-12 rounded-[4rem] shadow-xl border border-slate-100 animate-fade-in">
        <div className="text-center mb-12">
-          <h3 className="text-2xl font-black text-hs-blue uppercase mb-2">HBDI Denkkontext</h3>
-          <p className="text-slate-500">Systemische Verteilung der Denkpräferenzen im Team</p>
+          <h3 className="text-2xl font-black text-hs-blue uppercase mb-2">{tr('HBDI Denkkontext', 'HBDI thinking context')}</h3>
+          <p className="text-slate-500">{tr('Systemische Verteilung der Denkpräferenzen im Team', 'Systemic distribution of thinking preferences in the team')}</p>
        </div>
        <div className="grid grid-cols-2 gap-1 i max-w-2xl mx-auto border-4 border-slate-100 rounded-3xl overflow-hidden shadow-inner p-2 bg-slate-50">
           <div className="aspect-square bg-hs-blue/80 p-8 flex flex-col items-center justify-center text-white relative">
@@ -1135,7 +1167,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
           </div>
           <div className="aspect-square bg-emerald-500/80 p-8 flex flex-col items-center justify-center text-white relative">
              <span className="absolute top-4 right-4 font-black text-4xl opacity-20">B</span>
-             <p className="font-black text-xs uppercase mb-4 tracking-widest">Organisatorisch</p>
+             <p className="font-black text-xs uppercase mb-4 tracking-widest">{tr('Organisatorisch', 'Organisational')}</p>
              <div className="flex flex-wrap gap-2 justify-center">
                 {employees.filter(e => e.hbdiQuadrant === 'B').map(e => (
                    <div key={e.id} className="w-10 h-10 rounded-full bg-white/20 border border-white/40 flex items-center justify-center text-[10px] font-bold" title={e.name}>{e.name.split(' ')[0][0]}</div>
@@ -1153,7 +1185,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
           </div>
           <div className="aspect-square bg-hs-accent/80 p-8 flex flex-col items-center justify-center text-white relative">
              <span className="absolute bottom-4 right-4 font-black text-4xl opacity-20">D</span>
-             <p className="font-black text-xs uppercase mb-4 tracking-widest">Konzeptionell</p>
+             <p className="font-black text-xs uppercase mb-4 tracking-widest">{tr('Konzeptionell', 'Conceptual')}</p>
              <div className="flex flex-wrap gap-2 justify-center">
                 {employees.filter(e => e.hbdiQuadrant === 'D').map(e => (
                    <div key={e.id} className="w-10 h-10 rounded-full bg-white/20 border border-white/40 flex items-center justify-center text-[10px] font-bold" title={e.name}>{e.name.split(' ')[0][0]}</div>
@@ -1181,7 +1213,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
                
                <div className="space-y-8 flex-grow">
                   <div>
-                     <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-4 flex items-center"><CheckCircle size={14} className="mr-2 text-emerald-500" /> Positive Auffälligkeiten</h3>
+                     <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-4 flex items-center"><CheckCircle size={14} className="mr-2 text-emerald-500" /> {tr('Positive Auffälligkeiten', 'Positive observations')}</h3>
                      <ul className="space-y-2">
                         {selectedEmployee.observations?.positive.map((o, idx) => (
                            <li key={idx} className="text-xs font-bold text-slate-700 bg-white p-4 rounded-xl border border-slate-100 shadow-sm leading-relaxed">{o}</li>
@@ -1189,7 +1221,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
                      </ul>
                   </div>
                   <div>
-                     <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-4 flex items-center"><AlertCircle size={14} className="mr-2 text-hs-orange" /> Kritische Auffälligkeiten</h3>
+                     <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-4 flex items-center"><AlertCircle size={14} className="mr-2 text-hs-orange" /> {tr('Kritische Auffälligkeiten', 'Critical observations')}</h3>
                      <ul className="space-y-2">
                         {selectedEmployee.observations?.critical.map((o, idx) => (
                            <li key={idx} className="text-xs font-bold text-slate-700 bg-white p-4 rounded-xl border border-slate-100 shadow-sm leading-relaxed">{o}</li>
@@ -1201,9 +1233,9 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
 
             <div className="lg:w-3/4 p-10 flex flex-col overflow-y-auto">
                <div className="flex justify-between items-center mb-8">
-                  <h3 className="text-xl font-black text-hs-blue uppercase">Führungswerkzeuge</h3>
+                  <h3 className="text-xl font-black text-hs-blue uppercase">{tr('Führungswerkzeuge', 'Leadership tools')}</h3>
                   <div className="flex items-center space-x-2">
-                    <span className="bg-slate-100 px-4 py-1.5 rounded-full text-[9px] font-black uppercase text-slate-400 tracking-widest">Aktiviertes Tooling</span>
+                    <span className="bg-slate-100 px-4 py-1.5 rounded-full text-[9px] font-black uppercase text-slate-400 tracking-widest">{tr('Aktiviertes Tooling', 'Active tools')}</span>
                   </div>
                </div>
                
@@ -1217,7 +1249,7 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
                         className={`p-5 rounded-3xl border-2 flex flex-col items-center text-center transition-all ${activeInstrument === key ? 'border-hs-blue bg-hs-blue/5 shadow-lg' : 'border-slate-50 hover:border-hs-accent hover:bg-slate-50'}`}
                       >
                          <inst.icon size={28} className={`mb-3 ${activeInstrument === key ? 'text-hs-blue' : 'text-slate-400'}`} />
-                         <span className="text-[9px] font-black uppercase tracking-tight leading-tight">{inst.title}</span>
+                         <span className="text-[9px] font-black uppercase tracking-tight leading-tight">{instrumentTitle(key)}</span>
                       </button>
                     );
                   })}
@@ -1230,12 +1262,12 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
                            {React.createElement(INSTRUMENT_TEMPLATES[activeInstrument].icon, { size: 32 })}
                         </div>
                         <div>
-                           <h4 className="text-2xl font-black text-hs-blue uppercase tracking-tight">{INSTRUMENT_TEMPLATES[activeInstrument].title}</h4>
-                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Leitfaden & Dokumentation</p>
+                           <h4 className="text-2xl font-black text-hs-blue uppercase tracking-tight">{instrumentTitle(activeInstrument)}</h4>
+                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{tr('Leitfaden & Dokumentation', 'Guide & documentation')}</p>
                         </div>
                      </div>
                      <div className="space-y-10">
-                        {INSTRUMENT_TEMPLATES[activeInstrument].sections.map((sec, i) => (
+                        {INSTRUMENT_TEMPLATES[activeInstrument].sections.map((_, i) => { const sec = instrumentSection(activeInstrument, i); return (
                            <div key={i} className="animate-fade-in" style={{ animationDelay: `${i * 100}ms` }}>
                               <div className="flex items-center space-x-3 mb-3">
                                  <div className="w-6 h-6 rounded-full bg-hs-accent text-white flex items-center justify-center text-[10px] font-black">{i+1}</div>
@@ -1246,23 +1278,23 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
                                 value={instrumentNotes[`${activeInstrument}-${selectedEmployee.id}-${i}`] || ''}
                                 onChange={e => setInstrumentNotes({...instrumentNotes, [`${activeInstrument}-${selectedEmployee.id}-${i}`]: e.target.value})}
                                 className="w-full h-32 bg-white border border-slate-100 rounded-[1.5rem] p-6 text-sm outline-none focus:border-hs-blue transition-all shadow-sm" 
-                                placeholder="Ergebnisse der Besprechung hier dokumentieren..." 
+                                placeholder={tr('Ergebnisse der Besprechung hier dokumentieren...', 'Document meeting results here...')}
                               />
                            </div>
-                        ))}
+                        ); })}
                         <button 
-                          onClick={() => { alert("Vorgang wurde im Intelligence Vault gesichert."); setSelectedEmployee(null); }}
+                          onClick={() => { alert(tr('Vorgang wurde im Intelligence Vault gesichert.', 'The process was saved to the intelligence vault.')); setSelectedEmployee(null); }}
                           className="w-full py-5 bg-hs-orange text-white rounded-3xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl hover:bg-hs-blue transition-all flex items-center justify-center group"
                         >
-                           <SaveAll size={20} className="mr-3 group-hover:scale-110 transition-transform" /> Gesprächsergebnisse finalisieren & Vault sichern
+                           <SaveAll size={20} className="mr-3 group-hover:scale-110 transition-transform" /> {tr('Gesprächsergebnisse finalisieren & Vault sichern', 'Finalise meeting results & save to vault')}
                         </button>
                      </div>
                   </div>
                ) : (
                   <div className="flex-grow flex flex-col items-center justify-center text-center p-16 border-4 border-dashed border-slate-50 rounded-[4rem] bg-slate-50/30">
                      <Sparkles size={64} className="text-slate-100 mb-6" />
-                     <h4 className="text-lg font-black text-slate-300 uppercase mb-2">Instrument auswählen</h4>
-                     <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest max-w-[200px]">Nutzen Sie eines der Templates, um das Gespräch strukturiert vorzubereiten</p>
+                     <h4 className="text-lg font-black text-slate-300 uppercase mb-2">{tr('Instrument auswählen', 'Select a tool')}</h4>
+                     <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest max-w-[200px]">{tr('Nutzen Sie eines der Templates, um das Gespräch strukturiert vorzubereiten', 'Use one of the templates to prepare the meeting in a structured way')}</p>
                   </div>
                )}
             </div>
@@ -1297,16 +1329,16 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
             <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-6">
               <div>
                  <button onClick={() => setStep('LANDING')} className="mb-4 flex items-center text-slate-400 hover:text-hs-blue transition-colors font-black uppercase text-[10px] tracking-widest">
-                    <ChevronLeft size={14} className="mr-1" /> Zurück zum Setup
+                    <ChevronLeft size={14} className="mr-1" /> {tr('Zurück zum Setup', 'Back to setup')}
                  </button>
                  <h1 className="text-4xl font-black text-hs-blue uppercase tracking-tight">{t('area.lead')}</h1>
-                 <p className="text-slate-500 font-medium">Interaktives Dashboard für wirksame Führungsinstrumente</p>
+                 <p className="text-slate-500 font-medium">{tr('Interaktives Dashboard für wirksame Führungsinstrumente', 'Interactive dashboard for effective leadership tools')}</p>
               </div>
               
               <div className="bg-white/50 backdrop-blur-sm px-6 py-4 rounded-[2rem] border border-slate-200 flex items-center space-x-4">
                  <Info className="text-hs-orange shrink-0" size={20} />
                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Aktives Szenario</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{tr('Aktives Szenario', 'Active scenario')}</p>
                     <p className="text-xs font-bold text-hs-blue mt-1 truncate max-w-[200px]">{leaderContext.company || TEAM_SCENARIO.title}</p>
                  </div>
               </div>
