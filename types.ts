@@ -64,6 +64,9 @@ export interface OrgContextData {
   innovationLevel: number;
   mainProblem: string;
   profitability: number;
+  /** Optional: Adresse der Organisations-Webseite und daraus erzeugte Kurzzusammenfassung (fließt in die KI-Prompts). */
+  websiteUrl?: string;
+  websiteSummary?: string;
   lastAnalysisResults?: {
     toolId: string;
     summary: string;
