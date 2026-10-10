@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { AiWaiting } from '../components/AiWaiting';
+import { ResultTeaser } from '../components/ResultTeaser';
 import { Auth } from '../components/Auth';
 import { saveProjectSession } from '../services/firebase';
 import { OrgContextForm } from '../components/OrgContextForm';
@@ -59,11 +60,13 @@ export const VentureForge: React.FC<{ user: any, setView: (v: ViewState) => void
   };
 
   const handleDeepDive = async (concept: VentureConcept) => {
-    setLoading(true);
     setApiError(null);
     setDeepDive(null);
     setSelectedConcept(concept);
     setStep('DEEP_DIVE');
+    // Detailanalyse nur nach Anmeldung; die Übersicht der Konzepte bleibt frei.
+    if (!user) return;
+    setLoading(true);
     try {
       const dna = { ...founderDNA, corpNeeds, orgInfo };
       const res = await generateVentureDeepDive(concept, dna, language);
@@ -76,6 +79,13 @@ export const VentureForge: React.FC<{ user: any, setView: (v: ViewState) => void
       setLoading(false);
     }
   };
+
+  // Nach der Anmeldung die gewählte Detailanalyse automatisch starten.
+  useEffect(() => {
+    if (user && step === 'DEEP_DIVE' && selectedConcept && !deepDive && !loading && !apiError) {
+      handleDeepDive(selectedConcept);
+    }
+  }, [user]);
 
   const renderLanding = () => (
     <div className="max-w-6xl mx-auto py-12 animate-fade-in px-4">
@@ -194,6 +204,15 @@ export const VentureForge: React.FC<{ user: any, setView: (v: ViewState) => void
           ? ['Das Konzept wird vertieft …', 'Markt und Zielgruppe werden analysiert …', 'Roadmap und Risiken werden ausgearbeitet …']
           : ['Deepening the concept …', 'Analyzing market and target group …', 'Building roadmap and risks …']}
         hint={tr('Das dauert meist 20–40 Sekunden.', 'This usually takes 20–40 seconds.')}
+      />
+    );
+    if (!user && selectedConcept) return (
+      <ResultTeaser
+        title={tr('Detailanalyse freischalten', 'Unlock the detailed analysis')}
+        lead={`${selectedConcept.name}. ${selectedConcept.tagline}`}
+        locked={language === 'de'
+          ? ['Zielgruppe und Persona', 'Marktpotenzial', 'Entwicklungs-Roadmap mit Phasen und Meilensteinen', 'Technologie-Stack und strategische Risiken']
+          : ['Target group and persona', 'Market potential', 'Development roadmap with phases and milestones', 'Technology stack and strategic risks']}
       />
     );
     if (apiError || !deepDive || !selectedConcept) return (
