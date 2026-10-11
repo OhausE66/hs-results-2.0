@@ -248,7 +248,7 @@ const AppContent: React.FC = () => {
       </div>
 
       {/* Interactive AI Stamp */}
-      <div className="fixed bottom-32 right-8 z-[60] group no-print">
+      <div className="hidden md:block fixed bottom-32 right-8 z-[60] group no-print">
         {/* Tooltip / Marketing Statement */}
         <div className="absolute bottom-full right-0 mb-32 w-64 bg-hs-blue text-white p-4 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-500 transform translate-y-4 group-hover:translate-y-0 border border-white/10 pointer-events-none">
            <p className="text-sm font-bold leading-tight">
