@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { verifyFirebaseIdToken } from '../_lib/firebase-id-token';
+import { verifyFirebaseIdToken } from '../_lib/firebase-id-token.js';
 
 const defaultModel = 'gemini-3.1-pro-preview';
 const allowedModels = new Set([defaultModel, 'gemini-3-flash-preview', 'gemini-3.6-flash']);
