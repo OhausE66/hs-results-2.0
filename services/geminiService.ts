@@ -6,6 +6,7 @@ import {
   AssessmentQuestion, 
   AssessmentResponse 
 } from "../types";
+import { auth } from './firebase';
 
 const modelName = "gemini-3.1-pro-preview";
 // Schnelles Modell für Zwischenfragen im Frage-Antwort-Fluss (ca. 3x schneller laut Messung vom 2026-10-09).
@@ -149,9 +150,15 @@ const runQuestionStep = async (history: any[], config: any) => {
 };
 
 export const generateContent = async (params: { model?: string, contents: any, config?: any }) => {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Authentication required');
+  const idToken = await user.getIdToken();
   const res = await fetch('/api/gemini/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${idToken}`,
+    },
     body: JSON.stringify(params)
   });
   if (!res.ok) throw new Error(await res.text());
