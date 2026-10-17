@@ -87,7 +87,13 @@ export default async function handler(req: any, res: any) {
 
     const token = getBearerToken(req.headers?.authorization);
     if (!token) return res.status(401).json({ error: genericError });
-    const claims = await verifyFirebaseIdToken(token);
+    let claims: Awaited<ReturnType<typeof verifyFirebaseIdToken>>;
+    try {
+      claims = await verifyFirebaseIdToken(token);
+    } catch {
+      // Ungültige oder abgelaufene Anmeldung: 401 statt Serverfehler.
+      return res.status(401).json({ error: genericError });
+    }
     const clientIp = getClientIp(req.headers || {});
     if (isRateLimited([`user:${claims.sub}`, `ip:${clientIp}`])) {
       res.setHeader('Retry-After', String(Math.ceil(rateLimitWindowMs / 1000)));
