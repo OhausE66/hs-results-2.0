@@ -25,9 +25,11 @@ service firebase.storage {
       allow write: if isAdmin();
     }
     
-    // Berater Bilder & CVs: Öffentlich lesbar, nur Admin schreibt
-    match /consultants/{allPaths=**} {
-      allow read: if true;
+    // Berater-Profilbilder sind öffentlich; CVs und sonstige Beraterdateien
+    // sind nur für angemeldete Nutzer sichtbar. Die bestehenden Upload-Pfade
+    // sind consultants/{name}/profile_image und consultants/{name}/cv_{datei}.
+    match /consultants/{consultantId}/{fileName} {
+      allow read: if fileName == 'profile_image' || isSignedIn();
       allow write: if isAdmin();
     }
     

@@ -3,6 +3,7 @@ import path, { join } from 'path';
 import { GoogleGenAI } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
 import websiteContextHandler from './api/website-context';
+import geminiGenerateHandler from './api/gemini/generate';
 
 const __dirname = process.cwd();
 
@@ -79,29 +80,16 @@ async function startServer() {
   
       const result = await chat.sendMessage({ message });
       res.json({ text: result.text });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Chat Error:", error);
-      res.status(500).json({ error: "Failed to generate chat response: " + (error.message || error.toString()) });
+      res.status(500).json({ error: 'The request could not be processed.' });
     }
   });
   
   app.post('/api/website-context', websiteContextHandler);
 
-  // Generic proxy for other AI tools
-  app.post('/api/gemini/generate', async (req, res) => {
-    try {
-      const { model, contents, config } = req.body;
-      const response = await ai.models.generateContent({
-        model: model || modelName,
-        contents,
-        config
-      });
-      res.json({ text: response.text });
-    } catch (error: any) {
-      console.error("Generate Error:", error);
-      res.status(500).json({ error: "Failed to generate content: " + error.message });
-    }
-  });
+  // Use the same authenticated and rate-limited implementation in local runs.
+  app.all('/api/gemini/generate', (req, res) => geminiGenerateHandler(req, res));
   
   /**
    * SERVER ENDPOINT: Google Site Verification

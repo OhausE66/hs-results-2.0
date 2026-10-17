@@ -10,7 +10,7 @@ export default async function handler(req: any, res: any) {
 
   const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured' });
+    return res.status(500).json({ error: 'The request could not be processed.' });
   }
 
   try {
@@ -85,10 +85,8 @@ BEISPIEL: "Ich empfehle Ihnen unser Organisations-Audit: [TOOL:ORGANIZATION_ANAL
 
     const result = await chat.sendMessage({ message: message || '' });
     return res.status(200).json({ text: result.text });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Chat Error:', error);
-    return res.status(500).json({
-      error: 'Failed to generate chat response: ' + (error.message || error.toString()),
-    });
+    return res.status(500).json({ error: 'The request could not be processed.' });
   }
 }
