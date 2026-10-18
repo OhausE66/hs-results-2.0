@@ -71,8 +71,8 @@ export const ChangeManager: React.FC<ChangeManagerProps> = ({ user, setView, org
       setCultureQuestions(qs);
       if (!qs || qs.length === 0) throw new Error('No questions generated');
       setQuestionsGenerated(true);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      console.error('Culture question generation failed');
       setApiError(tr('Die Kultur-Fragen konnten nicht erstellt werden. Bitte versuchen Sie es erneut.', 'The culture questions could not be created. Please try again.'));
     } finally {
       setGeneratingQuestions(false);
@@ -104,8 +104,8 @@ export const ChangeManager: React.FC<ChangeManagerProps> = ({ user, setView, org
       );
       if (!res) throw new Error('Analysis empty');
       setResult(res);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      console.error('Change analysis generation failed');
       setApiError(tr('Der Bericht konnte nicht erstellt werden. Bitte versuchen Sie es erneut.', 'The report could not be created. Please try again.'));
     } finally {
       setLoading(false);
@@ -126,8 +126,8 @@ export const ChangeManager: React.FC<ChangeManagerProps> = ({ user, setView, org
       });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      console.error('Change analysis save failed');
       setSaveStatus('idle');
     }
   };

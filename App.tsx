@@ -24,7 +24,7 @@ import { Footer } from './components/Footer';
 import { Auth } from './components/Auth';
 import { Profile } from './components/Profile';
 import { ViewState, OrgContext, FileRecord } from './types';
-import { auth, onAuthStateChanged, db, collection, onSnapshot } from './services/firebase';
+import { auth, onAuthStateChanged, db, collection, onSnapshot, recordUserActivity } from './services/firebase';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { startResultaChat } from './services/geminiService';
 import { ChatMessage } from './components/ChatMessage';
@@ -53,6 +53,10 @@ const AppContent: React.FC = () => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setAuthLoading(false);
+      if (currentUser) {
+        // Best effort only: the UI stays available if this housekeeping write fails.
+        void recordUserActivity(currentUser.uid).catch(() => undefined);
+      }
     });
     return () => unsubscribeAuth();
   }, []);
@@ -104,8 +108,8 @@ const AppContent: React.FC = () => {
       if (!chatSessionRef.current) chatSessionRef.current = startResultaChat(language as any);
       const result = await chatSessionRef.current.sendMessage({ message: userText, history: chatMessages });
       setChatMessages(prev => [...prev, { role: 'bot', text: result.text }]);
-    } catch (err) {
-      console.error("Chat Error:", err);
+    } catch {
+      console.error('Chat request failed');
       setChatMessages(prev => [...prev, { role: 'bot', text: "Entschuldigung, da ist etwas schiefgelaufen. Bitte versuchen Sie es gleich noch einmal." }]);
     } finally {
       setIsTyping(false);

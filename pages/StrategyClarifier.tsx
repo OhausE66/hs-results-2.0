@@ -70,8 +70,8 @@ export const StrategyClarifier: React.FC<StrategyClarifierProps> = ({ user, setV
       });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch (e) {
-      console.error("Save error", e);
+    } catch {
+      console.error('Strategy save failed');
       setSaveStatus('idle');
     }
   };
@@ -89,8 +89,8 @@ export const StrategyClarifier: React.FC<StrategyClarifierProps> = ({ user, setV
       } else {
         throw new Error("No options generated");
       }
-    } catch (error) {
-      console.error(error);
+    } catch {
+      console.error('Strategy option generation failed');
       setApiError(language === 'de' ? "KI-Assistent ist kurzzeitig überlastet. Bitte erneut versuchen." : "AI Assistant is briefly overloaded. Please try again.");
     } finally {
       setLoading(false);
@@ -116,8 +116,8 @@ export const StrategyClarifier: React.FC<StrategyClarifierProps> = ({ user, setV
       } else {
         throw new Error("Plan was empty");
       }
-    } catch (error) {
-      console.error(error);
+    } catch {
+      console.error('Strategy plan generation failed');
       setApiError(language === 'de' ? "Die Strategie-Finalisierung ist fehlgeschlagen. Bitte versuchen Sie es erneut." : "Strategy finalization failed. Please try again.");
     } finally {
       setLoading(false);

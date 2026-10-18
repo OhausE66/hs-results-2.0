@@ -48,11 +48,14 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess, inline = false }) => 
           name: nameOverride || user.displayName || formData.name || 'User',
           email: user.email,
           photoURL: user.photoURL || '',
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          lastSeenAt: new Date().toISOString()
         });
+      } else {
+        await setDoc(userRef, { lastSeenAt: new Date().toISOString() }, { merge: true });
       }
-    } catch (err) {
-      console.error("Firestore sync error:", err);
+    } catch {
+      console.error('Firestore user sync failed');
     }
   };
 

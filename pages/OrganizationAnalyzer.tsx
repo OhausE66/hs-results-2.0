@@ -64,8 +64,8 @@ export const OrganizationAnalyzer: React.FC<OrganizationAnalyzerProps> = ({ user
       });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch (e) {
-      console.error("Save error", e);
+    } catch {
+      console.error('Organisation analysis save failed');
       setSaveStatus('idle');
     }
   };
@@ -122,8 +122,8 @@ ${(finalResult.optimization_proposals?.long_term || []).map(p => `- ${p}`).join(
     try {
       const response = await processOrgAnalysisStep(initialHistory, language);
       handleAIResponse(response, initialHistory);
-    } catch (error: any) {
-      console.error(error);
+    } catch {
+      console.error('Organisation question generation failed');
       setApiError("Verbindung unterbrochen.");
       setStep('SETUP');
     } finally {
@@ -148,8 +148,8 @@ ${(finalResult.optimization_proposals?.long_term || []).map(p => `- ${p}`).join(
       const response = await processOrgAnalysisStep(newHistory, language);
       setQuestionCount(prev => prev + 1);
       handleAIResponse(response, newHistory);
-    } catch (error: any) {
-      console.error(error);
+    } catch {
+      console.error('Organisation analysis generation failed');
     } finally {
       setLoading(false);
     }

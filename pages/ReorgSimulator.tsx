@@ -70,8 +70,8 @@ export const ReorgSimulator: React.FC<ReorgSimulatorProps> = ({ user, setView, s
       });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch (e) {
-      console.error("Save error", e);
+    } catch {
+      console.error('Reorganisation simulation save failed');
       setSaveStatus('idle');
     }
   };
@@ -93,8 +93,8 @@ export const ReorgSimulator: React.FC<ReorgSimulatorProps> = ({ user, setView, s
     try {
       const response = await processReorgStep(initialHistory, language);
       handleAIResponse(response);
-    } catch (error: any) {
-      console.error(error);
+    } catch {
+      console.error('Reorganisation question generation failed');
       setStep('INITIAL');
     } finally {
       setLoading(false);
@@ -118,8 +118,8 @@ export const ReorgSimulator: React.FC<ReorgSimulatorProps> = ({ user, setView, s
       const response = await processReorgStep(newHistory, language);
       setQuestionCount(prev => prev + 1);
       handleAIResponse(response);
-    } catch (error: any) {
-      console.error(error);
+    } catch {
+      console.error('Reorganisation simulation generation failed');
     } finally {
       setLoading(false);
     }

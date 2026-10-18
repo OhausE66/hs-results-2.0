@@ -25,6 +25,12 @@ export const FileVault: React.FC<{ user: any, setView: (v: ViewState) => void }>
   const [searchQuery, setSearchQuery] = useState('');
   const [emailModal, setEmailModal] = useState<{ open: boolean, email: string, sending: boolean, success: boolean }>({ open: false, email: '', sending: false, success: false });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const allowedFileTypes = new Set([
+    'application/pdf', 'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain', 'text/csv', 'image/jpeg', 'image/png', 'image/webp',
+  ]);
 
   useEffect(() => {
     if (!user) return;
@@ -52,6 +58,10 @@ export const FileVault: React.FC<{ user: any, setView: (v: ViewState) => void }>
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+    if (!allowedFileTypes.has(file.type)) {
+      setUploadError('Erlaubt sind PDF-, Office-, Text-, CSV- und JPG/PNG/WebP-Dateien.');
+      return;
+    }
     if (file.size > 20 * 1024 * 1024) { setUploadError("Max. 20MB"); return; }
 
     setUploadError(null);
@@ -84,8 +94,8 @@ export const FileVault: React.FC<{ user: any, setView: (v: ViewState) => void }>
       const storageRef = ref(storage, file.storagePath);
       const url = await getDownloadURL(storageRef);
       window.open(url, '_blank');
-    } catch (err) {
-      console.error("Download Error", err);
+    } catch {
+      console.error('Vault download failed');
       alert("Fehler beim Abrufen der Datei.");
     }
   };
@@ -173,7 +183,7 @@ ${JSON.stringify(project.results?.data || project.results || {}, null, 2)}
                  <button onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null} className="bg-hs-blue text-white px-6 py-2.5 rounded-xl font-bold flex items-center shadow-lg hover:bg-hs-orange disabled:opacity-50 transition-all">
                     <Upload size={18} className="mr-2" /> Hochladen
                  </button>
-                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv,image/jpeg,image/png,image/webp" />
                </>
              )}
           </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Building, ArrowRight, Save, FolderOpen, Loader2, CheckCircle, Database } from 'lucide-react';
 import { OrgContextData } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
-import { saveSharedOrgContext, getSharedOrgContexts } from '../services/firebase';
+import { auth, saveSharedOrgContext, getSharedOrgContexts } from '../services/firebase';
 
 interface OrgContextFormProps {
   user: any;
@@ -35,9 +35,11 @@ export const OrgContextForm: React.FC<OrgContextFormProps> = ({ user, onComplete
     setWebsiteState('loading');
     setWebsiteError(null);
     try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error(language === 'de' ? 'Bitte melden Sie sich für die Webseitenanalyse an.' : 'Please sign in to analyse a website.');
       const res = await fetch('/api/website-context', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
         body: JSON.stringify({ url, lang: language })
       });
       const json = await res.json().catch(() => ({}));
@@ -84,8 +86,8 @@ export const OrgContextForm: React.FC<OrgContextFormProps> = ({ user, onComplete
     try {
       const res = await getSharedOrgContexts(user.uid);
       setTemplates(res);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      console.error('Organisation profile load failed');
     } finally {
       setLoadingTemplates(false);
     }
@@ -99,8 +101,8 @@ export const OrgContextForm: React.FC<OrgContextFormProps> = ({ user, onComplete
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
       loadTemplates();
-    } catch (e) {
-      console.error(e);
+    } catch {
+      console.error('Organisation profile save failed');
     } finally {
       setSavingTemplate(false);
     }

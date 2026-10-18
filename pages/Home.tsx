@@ -144,8 +144,8 @@ export const Home: React.FC<HomeProps> = ({ setView, user }) => {
     try {
       const items = await listHomepageAssets();
       setAssets(items);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      console.error('Consultant profile load failed');
     } finally {
       setLoadingAssets(false);
     }

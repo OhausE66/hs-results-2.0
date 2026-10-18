@@ -99,8 +99,8 @@ export const CultureScanner: React.FC<{ user: any, setView: (v: ViewState) => vo
       });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch (e) {
-      console.error("Save error", e);
+    } catch {
+      console.error('Culture scanner save failed');
       setSaveStatus('idle');
     }
   };

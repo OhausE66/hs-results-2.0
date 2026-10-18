@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, limit, addDoc, writeBatch, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, addDoc, writeBatch, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, listAll } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import { 
   getAuth, 
@@ -12,11 +12,8 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithPopup,
-  deleteUser,
-  reauthenticateWithCredential,
-  EmailAuthProvider
+  deleteUser
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
 import { SavedProject, OrgContextData } from "../types";
 
 const firebaseConfig = {
@@ -48,7 +45,6 @@ export {
   onSnapshot,
   query,
   orderBy,
-  limit,
   addDoc,
   writeBatch,
   where,
@@ -62,8 +58,6 @@ export {
   GoogleAuthProvider,
   signInWithPopup,
   deleteUser,
-  reauthenticateWithCredential,
-  EmailAuthProvider,
   doc,
   setDoc,
   ref,
@@ -84,6 +78,12 @@ export const saveProjectSession = async (uid: string, project: Omit<SavedProject
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   });
+};
+
+/** Records activity for the inactivity-retention policy without storing request details. */
+export const recordUserActivity = async (uid: string) => {
+  if (!uid) return;
+  await setDoc(doc(db, 'users', uid), { lastSeenAt: new Date().toISOString() }, { merge: true });
 };
 
 export const saveSharedOrgContext = async (uid: string, context: OrgContextData) => {
@@ -228,8 +228,8 @@ export const deletePublicationPDF = async (articleId: string) => {
     const pdfRef = ref(storage, `publications/${articleId}_${data.fileName}`);
     try {
       await deleteObject(pdfRef);
-    } catch (e) {
-      console.warn("Could not delete PDF from storage", e);
+    } catch {
+      console.warn('Publication storage deletion failed');
     }
     // Delete from Firestore
     await deleteDoc(docSnap.ref);
@@ -250,7 +250,7 @@ export const deleteUserProfileImage = async (uid: string) => {
   const imageRef = ref(storage, `user_profiles/${uid}/profile_image`);
   try {
     await deleteObject(imageRef);
-  } catch (e) {
-    console.warn("Could not delete profile image (might not exist)", e);
+  } catch {
+    console.warn('Profile image deletion skipped');
   }
 };
