@@ -123,8 +123,8 @@ const safeParse = (text: string | undefined) => {
   try {
     const cleaned = text.trim();
     return JSON.parse(cleaned);
-  } catch (e) {
-    console.error("Gemini JSON Parse Error:", e, text);
+  } catch {
+    console.error('Gemini JSON parse failed');
     return null;
   }
 };
@@ -143,8 +143,8 @@ const runQuestionStep = async (history: any[], config: any) => {
   try {
     const fast = await run(fastModelName);
     if (fast && (fast.next_question?.text || fast.final_result)) return fast;
-  } catch (e) {
-    console.error("Fast model failed, falling back to Pro:", e);
+  } catch {
+    console.error('Fast model fallback');
   }
   return run(modelName);
 };
@@ -169,10 +169,14 @@ export const generateContent = async (params: { model?: string, contents: any, c
 export const startResultaChat = (lang: 'de' | 'en' = 'de') => {
   return {
     sendMessage: async ({ message, history }: { message: string, history?: any[] }) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Authentication required');
+      const idToken = await user.getIdToken();
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({ message, history, lang }),
       });
@@ -349,8 +353,8 @@ export const generateStrategyOptions = async (context: any, lang: 'de' | 'en' = 
   try {
     const fast = await run(fastModelName);
     if (Array.isArray(fast) && fast.length > 0 && fast[0]?.title) return fast;
-  } catch (e) {
-    console.error("Fast model failed, falling back to Pro:", e);
+  } catch {
+    console.error('Fast model fallback');
   }
   return (await run(modelName)) || [];
 };

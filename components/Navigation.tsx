@@ -39,8 +39,8 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setView, us
     try {
       await signOut(auth);
       setView(ViewState.HOME);
-    } catch (err) {
-      console.error("Logout error", err);
+    } catch {
+      console.error('Logout failed');
     }
   };
 

@@ -20,7 +20,7 @@ import {
   listAll,
   deleteObject
 } from '../services/firebase';
-import { User, Mail, Shield, Trash2, Save, Loader2, CheckCircle, Camera, AlertTriangle, AlertCircle, X, HardDrive } from 'lucide-react';
+import { User, Mail, Shield, Trash2, Save, Loader2, CheckCircle, Camera, AlertTriangle, AlertCircle, X, HardDrive, Download } from 'lucide-react';
 import { ViewState, UserProfile } from '../types';
 
 interface ProfileProps {
@@ -34,6 +34,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, setView, usedStorage = 0
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -72,8 +73,8 @@ export const Profile: React.FC<ProfileProps> = ({ user, setView, usedStorage = 0
             photoURL: user.photoURL || '' 
           });
         }
-      } catch (err) {
-        console.error("Error fetching profile:", err);
+      } catch {
+        console.error('Profile load failed');
       } finally {
         setLoading(false);
       }
@@ -103,8 +104,8 @@ export const Profile: React.FC<ProfileProps> = ({ user, setView, usedStorage = 0
 
       setProfile(prev => prev ? { ...prev, name: editData.name, photoURL: editData.photoURL } : null);
       setMsg({ type: 'success', text: 'Profil erfolgreich aktualisiert.' });
-    } catch (err: any) {
-      setMsg({ type: 'error', text: err.message || 'Fehler beim Speichern.' });
+    } catch {
+      setMsg({ type: 'error', text: 'Fehler beim Speichern. Bitte versuchen Sie es erneut.' });
     } finally {
       setSaving(false);
     }
@@ -114,6 +115,10 @@ export const Profile: React.FC<ProfileProps> = ({ user, setView, usedStorage = 0
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setMsg({ type: 'error', text: 'Bitte wählen Sie ein JPG-, PNG- oder WebP-Bild.' });
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
       setMsg({ type: 'error', text: 'Das Bild ist zu groß (Max. 5MB).' });
       return;
@@ -136,8 +141,8 @@ export const Profile: React.FC<ProfileProps> = ({ user, setView, usedStorage = 0
       
       setProfile(prev => prev ? { ...prev, photoURL: url } : null);
       setMsg({ type: 'success', text: 'Profilbild erfolgreich hochgeladen.' });
-    } catch (err: any) {
-      setMsg({ type: 'error', text: 'Fehler beim Hochladen: ' + err.message });
+    } catch {
+      setMsg({ type: 'error', text: 'Das Profilbild konnte nicht hochgeladen werden. Bitte versuchen Sie es erneut.' });
     } finally {
       setUploadingImage(false);
     }
@@ -160,10 +165,84 @@ export const Profile: React.FC<ProfileProps> = ({ user, setView, usedStorage = 0
       
       setProfile(prev => prev ? { ...prev, photoURL: '' } : null);
       setMsg({ type: 'success', text: 'Profilbild gelöscht.' });
-    } catch (err: any) {
-      setMsg({ type: 'error', text: 'Fehler beim Löschen: ' + err.message });
+    } catch {
+      setMsg({ type: 'error', text: 'Das Profilbild konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.' });
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  const listStoragePaths = async (folderPath: string): Promise<string[]> => {
+    const folder = await listAll(ref(storage, folderPath));
+    const nested = await Promise.all(folder.prefixes.map((prefix) => listStoragePaths(prefix.fullPath)));
+    return [...folder.items.map((item) => item.fullPath), ...nested.flat()];
+  };
+
+  const deleteStorageFolder = async (folderPath: string) => {
+    const folder = await listAll(ref(storage, folderPath));
+    await Promise.all([
+      ...folder.items.map((item) => deleteObject(item)),
+      ...folder.prefixes.map((prefix) => deleteStorageFolder(prefix.fullPath)),
+    ]);
+  };
+
+  const handleExportData = async () => {
+    if (!user) return;
+    setExporting(true);
+    setMsg(null);
+    try {
+      const uid = user.uid;
+      const collectionNames = ['files', 'projects', 'orgContexts'];
+      const [userSnap, ...collectionSnaps] = await Promise.all([
+        getDoc(doc(db, 'users', uid)),
+        ...collectionNames.map((name) => getDocs(collection(db, 'users', uid, name))),
+      ]);
+      const [uploads, profileImages] = await Promise.all([
+        listStoragePaths(`user_uploads/${uid}`),
+        listStoragePaths(`user_profiles/${uid}`),
+      ]);
+      const collections = Object.fromEntries(collectionSnaps.map((snap, index) => [
+        collectionNames[index],
+        snap.docs.map((entry) => ({ id: entry.id, data: entry.data() })),
+      ]));
+      const exportData = {
+        schemaVersion: 1,
+        exportedAt: new Date().toISOString(),
+        firebaseAuth: {
+          uid: user.uid,
+          email: user.email || null,
+          displayName: user.displayName || null,
+          photoURL: user.photoURL || null,
+          emailVerified: Boolean(user.emailVerified),
+          providerIds: (user.providerData || []).map((provider: any) => provider.providerId),
+          metadata: {
+            creationTime: user.metadata?.creationTime || null,
+            lastSignInTime: user.metadata?.lastSignInTime || null,
+          },
+        },
+        firestore: {
+          user: userSnap.exists() ? userSnap.data() : null,
+          collections,
+        },
+        storage: {
+          objectPaths: [...uploads, ...profileImages],
+          note: 'Die JSON-Datei enthält Metadaten und Pfade; Binärdateien werden nicht eingebettet.',
+        },
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `hs-results-meine-daten-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setMsg({ type: 'success', text: 'Ihr Datenexport wurde heruntergeladen.' });
+    } catch {
+      setMsg({ type: 'error', text: 'Der Datenexport konnte nicht erstellt werden. Bitte versuchen Sie es erneut.' });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -175,30 +254,20 @@ export const Profile: React.FC<ProfileProps> = ({ user, setView, usedStorage = 0
     try {
       const uid = user.uid;
 
-      // 1. Delete all files in user storage folder: user_uploads/{uid}
-      const storageFolderRef = ref(storage, `user_uploads/${uid}`);
-      try {
-        const fileList = await listAll(storageFolderRef);
-        await Promise.all(fileList.items.map(fileItem => deleteObject(fileItem)));
-      } catch (err) {
-        console.warn("Could not delete storage folder (might be empty):", err);
-      }
+      // Delete all user storage paths, including the separately stored profile image.
+      await deleteStorageFolder(`user_uploads/${uid}`);
+      await deleteStorageFolder(`user_profiles/${uid}`);
 
-      // 2. Clean up Firestore user data (including sub-collections)
-      const batch = writeBatch(db);
-      
-      // Delete docs in 'files' sub-collection
-      const filesSnap = await getDocs(collection(db, "users", uid, "files"));
-      filesSnap.forEach(doc => batch.delete(doc.ref));
-      
-      // Delete docs in 'projects' sub-collection
-      const projectsSnap = await getDocs(collection(db, "users", uid, "projects"));
-      projectsSnap.forEach(doc => batch.delete(doc.ref));
-      
-      // Delete root user document
-      batch.delete(doc(db, "users", uid));
-      
-      await batch.commit();
+      // Delete every user-owned Firestore path used by this application. Firestore
+      // batches permit 500 writes, so large vaults are processed in safe chunks.
+      const collectionNames = ['files', 'projects', 'orgContexts'];
+      const snapshots = await Promise.all(collectionNames.map((name) => getDocs(collection(db, 'users', uid, name))));
+      const references = [...snapshots.flatMap((snapshot) => snapshot.docs.map((entry) => entry.ref)), doc(db, 'users', uid)];
+      for (let offset = 0; offset < references.length; offset += 500) {
+        const batch = writeBatch(db);
+        references.slice(offset, offset + 500).forEach((reference) => batch.delete(reference));
+        await batch.commit();
+      }
 
       // 3. Delete user from Firebase Authentication
       await deleteUser(user);
@@ -208,7 +277,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, setView, usedStorage = 0
       setView(ViewState.HOME);
       
     } catch (err: any) {
-      console.error("Delete account error:", err);
       if (err.code === 'auth/requires-recent-login') {
         setMsg({ 
           type: 'error', 
@@ -217,7 +285,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, setView, usedStorage = 0
       } else {
         setMsg({ 
           type: 'error', 
-          text: 'Ein Fehler ist beim Löschen Ihres Kontos aufgetreten: ' + (err.message || 'Unbekannter Fehler') 
+          text: 'Ein Fehler ist beim Löschen Ihres Kontos aufgetreten. Bitte versuchen Sie es erneut.'
         });
       }
       setDeleting(false);
@@ -365,6 +433,14 @@ export const Profile: React.FC<ProfileProps> = ({ user, setView, usedStorage = 0
               <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center">
                 <Shield size={16} className="mr-2 text-red-500" /> Account Verwaltung
               </h3>
+              <button
+                onClick={handleExportData}
+                disabled={exporting || deleting}
+                className="w-full mb-3 bg-slate-50 text-hs-blue py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-slate-100 transition-all flex items-center justify-center border border-slate-200 disabled:opacity-50"
+              >
+                {exporting ? <Loader2 className="animate-spin mr-2" size={20} /> : <Download className="mr-2" size={20} />}
+                Meine Daten exportieren
+              </button>
               {!showDeleteConfirm ? (
                 <button 
                   onClick={() => setShowDeleteConfirm(true)}

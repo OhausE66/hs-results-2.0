@@ -229,8 +229,8 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
       });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      console.error('Leadership radar save failed');
       setSaveStatus('idle');
     }
   };
@@ -251,8 +251,8 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
       const questions = response.text?.split('\n').filter(q => q.trim().length > 5).slice(0, 5) || [];
       if (questions.length === 0) throw new Error('No questions returned');
       setSystemicQuestions(questions);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      console.error('Coaching question generation failed');
       setApiError(tr('Die Coaching-Fragen konnten nicht erstellt werden. Bitte versuchen Sie es erneut.', 'The coaching questions could not be created. Please try again.'));
     } finally {
       setLoadingQuestions(false);
@@ -294,8 +294,8 @@ export const LeadershipRadar = ({ user, setView }: LeadershipRadarProps): React.
         throw new Error('Incomplete analysis returned');
       }
       setDetailedAnalysis(analysis);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      console.error('Leadership analysis generation failed');
       setDetailedAnalysis(null);
       setApiError(tr('Die Führungsanalyse konnte nicht erstellt werden. Bitte versuchen Sie es erneut.', 'The leadership analysis could not be created. Please try again.'));
     } finally {

@@ -8,4 +8,4 @@ const chat = ai.chats.create({
   },
   history: []
 });
-chat.sendMessage({ message: 'hello' }).then(res => console.log(res.text)).catch(console.error);
+chat.sendMessage({ message: 'hello' }).then(() => console.log('Gemini chat test completed')).catch(() => console.error('Gemini chat test failed'));

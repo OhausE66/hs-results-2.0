@@ -94,8 +94,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setView, user })
     try {
       const items = await listHomepageAssets();
       setAssets(items);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      console.error('Consultant list load failed');
     } finally {
       setLoading(false);
     }
@@ -135,8 +135,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setView, user })
       await saveConsultant(dataToSave);
       setIsModalOpen(false);
       setFormData(INITIAL_FORM);
-    } catch (err) {
-      console.error("Save Consultant Error:", err);
+    } catch {
+      console.error('Consultant save failed');
       alert("Fehler beim Speichern des Profils.");
     } finally {
       setSavingConsultant(false);
@@ -153,8 +153,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setView, user })
     try {
       const url = await uploadConsultantImage(file, formData.name);
       setFormData(prev => ({ ...prev, img: url }));
-    } catch (err) {
-      console.error("Image Upload Error:", err);
+    } catch {
+      console.error('Consultant image upload failed');
       alert("Fehler beim Hochladen des Bildes.");
     } finally {
       setUploadingImage(false);
@@ -171,8 +171,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setView, user })
     try {
       const url = await uploadConsultantCV(file, formData.name);
       setFormData(prev => ({ ...prev, cvUrl: url }));
-    } catch (err) {
-      console.error("CV Upload Error:", err);
+    } catch {
+      console.error('Consultant CV upload failed');
       alert("Fehler beim Hochladen der PDF.");
     } finally {
       setUploadingCV(false);

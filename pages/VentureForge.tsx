@@ -50,8 +50,8 @@ export const VentureForge: React.FC<{ user: any, setView: (v: ViewState) => void
       const res = await generateVentureConcepts(dna, language);
       if (!res || res.length === 0) throw new Error('No concepts generated');
       setConcepts(res);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      console.error('Venture concept generation failed');
       setConcepts([]);
       setApiError(tr('Die KI hat keine Konzepte geliefert. Bitte versuchen Sie es erneut.', 'The AI did not return any concepts. Please try again.'));
     } finally {
@@ -72,8 +72,8 @@ export const VentureForge: React.FC<{ user: any, setView: (v: ViewState) => void
       const res = await generateVentureDeepDive(concept, dna, language);
       if (!res) throw new Error('Deep dive empty');
       setDeepDive(res);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      console.error('Venture deep-dive generation failed');
       setApiError(tr('Die Detailanalyse konnte nicht erstellt werden. Bitte versuchen Sie es erneut.', 'The detailed analysis could not be created. Please try again.'));
     } finally {
       setLoading(false);
