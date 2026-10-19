@@ -4,9 +4,9 @@ Jeder Auftrag und Pull Request beginnt mit **„Sicherheit & Datenschutz“**. V
 
 | Datenart | Speicherort | Frist / Löschung |
 | --- | --- | --- |
-| Firebase-Authentifizierung (UID, E-Mail, Login-Metadaten) | Firebase Authentication | Konto und zugehörige Daten nach 12 Monaten ohne Nutzung löschen; `lastSeenAt` wird bei Anmeldung und App-Nutzung aktualisiert. |
-| Profil, Projekte, Vault-Metadaten, Organisationsprofile | Firestore: `users/{uid}`, `files`, `projects`, `orgContexts` | Mit Kontolöschung sofort; Konto-Inaktivität nach 12 Monaten. |
-| Persönliche Dateien und Profilbild | Firebase Storage: `user_uploads/{uid}`, `user_profiles/{uid}` | Mit Kontolöschung sofort; Konto-Inaktivität nach 12 Monaten. |
+| Firebase-Authentifizierung (UID, E-Mail, Login-Metadaten) | Firebase Authentication | Konto und zugehörige Daten nach 12 Monaten ohne Nutzung löschen. Der täglich geplante, durch `CRON_SECRET` geschützte Vercel-Job löscht mit `FIREBASE_SERVICE_ACCOUNT_JSON`; er startet standardmäßig als Dry-Run und protokolliert nur Zählwerte. `lastSeenAt` wird bei Anmeldung und App-Nutzung aktualisiert. Provider-/Backup-Logs sind davon nicht erfasst. |
+| Profil, Projekte, Vault-Metadaten, Organisationsprofile | Firestore: `users/{uid}` einschließlich aller Unterkollektionen (z. B. `files`, `projects`, `orgContexts`) | Mit Kontolöschung sofort; bei Inaktivität nach 12 Monaten durch den täglichen Job rekursiv. Bei einem Teilfehler meldet der Job keinen Erfolg und wiederholt die idempotente Bereinigung im nächsten Lauf. |
+| Persönliche Dateien und Profilbild | Firebase Storage: `user_uploads/{uid}`, `user_profiles/{uid}` | Mit Kontolöschung sofort; bei Inaktivität nach 12 Monaten durch den täglichen Job. Der Export enthält keine Binärdateien, aber für eigene Objekte zeitlich begrenzte Download-Links (15 Minuten). |
 | Öffentliche Beraterprofile und CVs | Firestore: `consultants`; Firebase Storage: `consultants/{name}` | Bis zur Entfernung durch die Administration bzw. bis zum Wegfall des Veröffentlichungszwecks; keine automatische Frist im Code. |
 | Webseiten-Kontext einer Analyse | Nur im Request der Vercel-Funktion und bei Google Gemini | Keine Speicherung durch die Anwendung; nach Ende der Anfrage nicht vorgehalten. |
 | Login-/Mail-Protokolle und verbrauchte Tokens | Keine anwendungseigene persistente Speicherung im Repository | Falls eingeführt: höchstens 30 Tage, danach löschen. |

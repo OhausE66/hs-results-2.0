@@ -186,6 +186,30 @@ export const Profile: React.FC<ProfileProps> = ({ user, setView, usedStorage = 0
     ]);
   };
 
+  const getExportDownloadLinks = async (): Promise<Array<{ path: string; url: string; expiresAt: string }>> => {
+    const token = await user.getIdToken();
+    const links: Array<{ path: string; url: string; expiresAt: string }> = [];
+    let cursor: string | null = null;
+    do {
+      const response = await fetch('/api/account/export-downloads', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(cursor ? { cursor } : {}),
+      });
+      if (!response.ok) throw new Error('Export links unavailable');
+      const page = await response.json();
+      if (!Array.isArray(page.links) || (page.nextCursor !== null && typeof page.nextCursor !== 'string')) {
+        throw new Error('Invalid export response');
+      }
+      links.push(...page.links);
+      cursor = page.nextCursor;
+    } while (cursor);
+    return links;
+  };
+
   const handleExportData = async () => {
     if (!user) return;
     setExporting(true);
@@ -197,9 +221,11 @@ export const Profile: React.FC<ProfileProps> = ({ user, setView, usedStorage = 0
         getDoc(doc(db, 'users', uid)),
         ...collectionNames.map((name) => getDocs(collection(db, 'users', uid, name))),
       ]);
-      const [uploads, profileImages] = await Promise.all([
+      const [uploads, profileImages, downloadLinks] = await Promise.all([
         listStoragePaths(`user_uploads/${uid}`),
         listStoragePaths(`user_profiles/${uid}`),
+        // Ohne Download-Links soll der übrige Export trotzdem funktionieren.
+        getExportDownloadLinks().catch(() => null),
       ]);
       const collections = Object.fromEntries(collectionSnaps.map((snap, index) => [
         collectionNames[index],
@@ -226,7 +252,9 @@ export const Profile: React.FC<ProfileProps> = ({ user, setView, usedStorage = 0
         },
         storage: {
           objectPaths: [...uploads, ...profileImages],
-          note: 'Die JSON-Datei enthält Metadaten und Pfade; Binärdateien werden nicht eingebettet.',
+          downloadLinks: downloadLinks ?? [],
+          ...(downloadLinks === null ? { downloadLinksError: 'Die Download-Links konnten gerade nicht erstellt werden. Bitte versuchen Sie den Export später erneut.' } : {}),
+          note: 'Binärdateien sind nicht in die JSON-Datei eingebettet. Die Download-Links gelten jeweils nur 15 Minuten ab Erstellung; danach kann der Export erneut erzeugt werden.',
         },
       };
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
