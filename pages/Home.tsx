@@ -316,9 +316,9 @@ export const Home: React.FC<HomeProps> = ({ setView, user }) => {
         </div>
       </section>
 
-      {/* APPS: LEAPCOACH, SALES COMPANION, GROWTH COMPANION, KRISEN-MANAGER */}
+      {/* APPS: LEAPCOACH, GROWTH COMPANION, CHANGE FRICTION SCAN, KRISEN-MANAGER, SALES COMPANION */}
       <section className="bg-hs-blue py-12 no-print">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {[
             {
               key: 'leapcoach',
@@ -327,6 +327,10 @@ export const Home: React.FC<HomeProps> = ({ setView, user }) => {
             {
               key: 'growth',
               links: [{ href: 'https://growth.solution-workspace.com', text: t('home.growth.cta'), primary: true }],
+            },
+            {
+              key: 'friction',
+              links: [{ href: 'https://friction.solution-workspace.com', text: t('home.friction.cta'), primary: true }],
             },
             {
               key: 'crisis',
